@@ -1,0 +1,31 @@
+{
+  "name": "free-qr-code-saas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo Free QR Code SaaS — React + Vite + Cloudflare Workers + Hono + Cloudflare D1",
+  "type": "module",
+  "engines": {
+    "node": "24.13.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm --filter './apps/*' build",
+    "build:api": "pnpm --filter api build",
+    "deploy:api:dry-run": "pnpm --filter api deploy:dry-run",
+    "lint": "pnpm --filter './apps/*' --filter './packages/*' lint",
+    "type-check": "pnpm --filter './apps/*' --filter './packages/*' type-check",
+    "test": "pnpm --filter './apps/*' --filter './packages/*' test",
+    "init-db": "node --env-file-if-exists=.env scripts/init-db.js",
+    "seed-db": "node --env-file-if-exists=.env scripts/seed-db.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

@@ -1,0 +1,513 @@
+openapi: 3.0.3
+info:
+  title: Free QR Code SaaS API
+  description: API REST du SaaS de génération de QR codes (Cloudflare Workers + MongoDB + R2).
+  version: 1.0.0
+  contact:
+    name: Free QR Code Support
+
+servers:
+  - url: https://api.free-qrcode.app
+    description: Production
+  - url: https://api-staging.free-qrcode.app
+    description: Staging
+  - url: http://localhost:8787
+    description: Local (Wrangler dev)
+
+paths:
+  /auth/register:
+    post:
+      summary: Inscription d'un nouvel utilisateur
+      tags: [Authentification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, motDePasse, nom, consentementMarketing]
+              properties:
+                email: { type: string, format: email }
+                motDePasse: { type: string, minLength: 8 }
+                nom: { type: string, minLength: 1 }
+                consentementMarketing: { type: boolean }
+      responses:
+        '201':
+          description: Utilisateur créé, email de confirmation envoyé
+        '409':
+          description: Email déjà utilisé
+        '422':
+          description: Données invalides
+
+  /auth/verify-email:
+    get:
+      summary: Confirmation d'email
+      tags: [Authentification]
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Email confirmé
+        '400':
+          description: Token invalide ou expiré
+
+  /auth/login:
+    post:
+      summary: Connexion
+      tags: [Authentification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, motDePasse]
+              properties:
+                email: { type: string, format: email }
+                motDePasse: { type: string }
+      responses:
+        '200':
+          description: Connexion réussie, cookies access/refresh définis
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        '401':
+          description: Identifiants invalides ou email non vérifié
+
+  /auth/refresh:
+    post:
+      summary: Rafraîchir l'access token
+      tags: [Authentification]
+      security: []
+      responses:
+        '200':
+          description: Nouvel access token
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        '401':
+          description: Refresh token invalide ou révoqué
+
+  /auth/logout:
+    post:
+      summary: Déconnexion (révoque le refresh token courant)
+      tags: [Authentification]
+      responses:
+        '200':
+          description: Déconnexion réussie
+
+  /auth/sessions:
+    get:
+      summary: Lister les sessions actives
+      tags: [Authentification]
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Liste des sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tokenHash: { type: string }
+                    dateCreation: { type: string, format: date-time }
+                    userAgent: { type: string }
+                    estRevoke: { type: boolean }
+    delete:
+      summary: Révoquer une session
+      tags: [Authentification]
+      security: [bearerAuth: []]
+      parameters:
+        - name: tokenHash
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Session révoquée
+        '404':
+          description: Session introuvable
+
+  /me:
+    get:
+      summary: Profil de l'utilisateur connecté
+      tags: [Utilisateur]
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Profil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Utilisateur'
+
+  /qrcodes:
+    get:
+      summary: Lister les QR codes de l'utilisateur
+      tags: [QR Codes]
+      security: [bearerAuth: []]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: type
+          in: query
+          schema: { type: string, enum: [statique, dynamique] }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Liste paginée des QR codes
+    post:
+      summary: Créer un QR code
+      tags: [QR Codes]
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QRCodeInput'
+      responses:
+        '201':
+          description: QR code créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCode'
+
+  /qrcodes/{id}:
+    get:
+      summary: Récupérer un QR code
+      tags: [QR Codes]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: QR code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRCode'
+    patch:
+      summary: Modifier un QR dynamique
+      tags: [QR Codes]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contenu: { type: string }
+                estActif: { type: boolean }
+      responses:
+        '200':
+          description: QR code mis à jour
+    delete:
+      summary: Supprimer un QR code
+      tags: [QR Codes]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Supprimé
+
+  /qrcodes/{id}/stats:
+    get:
+      summary: Statistiques d'un QR code
+      tags: [Statistiques]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Statistiques agrégées
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statistiques'
+
+  /qrcodes/{id}/export:
+    get:
+      summary: Exporter les statistiques
+      tags: [Statistiques]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [csv, xlsx, json] }
+      responses:
+        '200':
+          description: Fichier d'export
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+
+  /q/{aliasCourt}:
+    get:
+      summary: Redirection d'un QR dynamique
+      tags: [Redirection]
+      security: []
+      parameters:
+        - name: aliasCourt
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirection vers la cible
+        '404':
+          description: Alias inconnu ou QR inactif
+        '410':
+          description: QR supprimé définitivement
+
+  /admin/campaigns:
+    get:
+      summary: Lister les campagnes email
+      tags: [Administration]
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Liste des campagnes
+    post:
+      summary: Créer une campagne email
+      tags: [Administration]
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampagneEmailInput'
+      responses:
+        '201':
+          description: Campagne créée
+
+  /admin/campaigns/{id}/send:
+    post:
+      summary: Envoyer / programmer une campagne email
+      tags: [Administration]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduledAt: { type: string, format: date-time }
+      responses:
+        '202':
+          description: Campagne mise en file d'envoi
+
+  /admin/templates:
+    get:
+      summary: Lister les modèles de QR
+      tags: [Administration]
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Liste des modèles
+    post:
+      summary: Créer un modèle de QR
+      tags: [Administration]
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModeleQRInput'
+      responses:
+        '201':
+          description: Modèle créé
+
+  /tracking/pixel:
+    get:
+      summary: Pixel de tracking d'ouverture d'email
+      tags: [Tracking]
+      security: []
+      parameters:
+        - name: t
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Image GIF 1x1
+          content:
+            image/gif:
+              schema: { type: string, format: binary }
+
+  /tracking/click:
+    get:
+      summary: Lien tracké dans un email
+      tags: [Tracking]
+      security: []
+      parameters:
+        - name: t
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirection vers l'URL cible
+
+  /api-keys:
+    get:
+      summary: Lister les clés API
+      tags: [Clés API]
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Liste des clés API (sans la clé en clair)
+    post:
+      summary: Créer une clé API
+      tags: [Clés API]
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nom, dateExpiration]
+              properties:
+                nom: { type: string }
+                dateExpiration: { type: string, format: date-time }
+      responses:
+        '201':
+          description: Clé API créée (clé affichée une seule fois)
+
+  /api-keys/{id}:
+    delete:
+      summary: Révoquer une clé API
+      tags: [Clés API]
+      security: [bearerAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Clé API révoquée
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Utilisateur:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        nom: { type: string }
+        estVerifie: { type: boolean }
+        consentementMarketing: { type: boolean }
+        role: { type: string, enum: [utilisateur, admin] }
+        dateInscription: { type: string, format: date-time }
+
+    QRCodeInput:
+      type: object
+      required: [type, contenu]
+      properties:
+        type:
+          type: string
+          enum: [statique, dynamique]
+        contenu: { type: string }
+        design:
+          type: object
+          properties:
+            couleur: { type: string }
+            background: { type: string }
+            logoUrl: { type: string }
+
+    QRCode:
+      type: object
+      properties:
+        id: { type: string }
+        idUtilisateur: { type: string }
+        type: { type: string, enum: [statique, dynamique] }
+        contenu: { type: string }
+        aliasCourt: { type: string }
+        urlImage: { type: string }
+        estActif: { type: boolean }
+        dateCreation: { type: string, format: date-time }
+
+    Statistiques:
+      type: object
+      properties:
+        idQrCode: { type: string }
+        periode: { type: string }
+        totalScans: { type: integer }
+        scansUniques: { type: integer }
+        pays: { type: object, additionalProperties: { type: integer } }
+        appareils: { type: object, additionalProperties: { type: integer } }
+
+    CampagneEmailInput:
+      type: object
+      required: [nom, sujet, corpsHtml]
+      properties:
+        nom: { type: string }
+        sujet: { type: string }
+        corpsHtml: { type: string }
+        corpsTexte: { type: string }
+        cible: { type: string, enum: [tous, actifs, consentants] }
+
+    ModeleQRInput:
+      type: object
+      required: [nom, type, contenu, estPublic]
+      properties:
+        nom: { type: string }
+        type: { type: string, enum: [statique, dynamique] }
+        contenu: { type: string }
+        estPublic: { type: boolean }
+        categorie: { type: string }
