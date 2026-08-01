@@ -1,9 +1,15 @@
-import { rateLimitMiddleware } from '../middlewares/rate-limit.js';
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
-import { HTTPException } from 'hono/http-exception';
-import { getD1, nowDb, fromBoolean, type UserRow, type RefreshTokenRow } from '../lib/d1.js';
+import { rateLimitMiddleware } from "../middlewares/rate-limit.js";
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import { HTTPException } from "hono/http-exception";
+import {
+  getD1,
+  nowDb,
+  fromBoolean,
+  type UserRow,
+  type RefreshTokenRow,
+} from "../lib/d1.js";
 import {
   hashPassword,
   verifyPassword,
@@ -15,18 +21,27 @@ import {
   extractRefreshTokenFromCookie,
   toPublicUser,
   authMiddleware,
-} from '../services/auth.js';
-import type { AppContext, AppEnv } from '../types/index.js';
+} from "../services/auth.js";
+import type { AppContext, AppEnv } from "../types/index.js";
 
 const registerSchema = z.object({
-  email: z.string().email().transform((v) => v.toLowerCase().trim()),
+  email: z
+    .string()
+    .email()
+    .transform((v) => v.toLowerCase().trim()),
   motDePasse: z.string().min(8),
-  nom: z.string().min(1).transform((v) => v.trim()),
+  nom: z
+    .string()
+    .min(1)
+    .transform((v) => v.trim()),
   consentementMarketing: z.boolean(),
 });
 
 const loginSchema = z.object({
-  email: z.string().email().transform((v) => v.toLowerCase().trim()),
+  email: z
+    .string()
+    .email()
+    .transform((v) => v.toLowerCase().trim()),
   motDePasse: z.string().min(1),
 });
 
@@ -36,25 +51,34 @@ const verifyEmailSchema = z.object({
 
 export const authRoutes = new Hono<AppEnv>();
 
-authRoutes.use('/register', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
-authRoutes.use('/login', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
-authRoutes.use('/refresh', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
+authRoutes.use(
+  "/register",
+  rateLimitMiddleware as import("hono").MiddlewareHandler<AppEnv>,
+);
+authRoutes.use(
+  "/login",
+  rateLimitMiddleware as import("hono").MiddlewareHandler<AppEnv>,
+);
+authRoutes.use(
+  "/refresh",
+  rateLimitMiddleware as import("hono").MiddlewareHandler<AppEnv>,
+);
 
 export function getClientIp(c: AppContext): string {
-  const cf = c.req.header('CF-Connecting-IP');
+  const cf = c.req.header("CF-Connecting-IP");
   if (cf) return cf;
-  const xff = c.req.header('X-Forwarded-For');
+  const xff = c.req.header("X-Forwarded-For");
   if (xff) {
-    const first = xff.split(',')[0]?.trim();
+    const first = xff.split(",")[0]?.trim();
     if (first) return first;
   }
-  return 'unknown';
+  return "unknown";
 }
 
 async function getClientInfo(c: AppContext) {
   return {
     ip: getClientIp(c),
-    userAgent: c.req.header('User-Agent') ?? 'unknown',
+    userAgent: c.req.header("User-Agent") ?? "unknown",
   };
 }
 
@@ -78,18 +102,21 @@ function userPublicFromRow(row: UserRow) {
   return toPublicUser(mapUser(row));
 }
 
-authRoutes.post('/register', zValidator('json', registerSchema), async (c) => {
-  const data = c.req.valid('json');
+authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
+  const data = c.req.valid("json");
   const db = getD1(c.env);
-  const existing = await db.prepare('SELECT id FROM utilisateurs WHERE email = ?').bind(data.email.toLowerCase().trim()).first<{ id: number }>();
+  const existing = await db
+    .prepare("SELECT id FROM utilisateurs WHERE email = ?")
+    .bind(data.email.toLowerCase().trim())
+    .first<{ id: number }>();
   if (existing) {
-    throw new HTTPException(409, { message: 'Email already used' });
+    throw new HTTPException(409, { message: "Email already used" });
   }
   const now = nowDb();
   const hashed = await hashPassword(data.motDePasse);
   const result = await db
     .prepare(
-      'INSERT INTO utilisateurs (public_id, email, mot_de_passe, nom, est_verifie, consentement_marketing, date_consentement_marketing, date_inscription, est_actif, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      "INSERT INTO utilisateurs (public_id, email, mot_de_passe, nom, est_verifie, consentement_marketing, date_consentement_marketing, date_inscription, est_actif, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(
       crypto.randomUUID(),
@@ -101,21 +128,30 @@ authRoutes.post('/register', zValidator('json', registerSchema), async (c) => {
       data.consentementMarketing ? now : null,
       now,
       1,
-      'utilisateur'
+      "utilisateur",
     )
     .run();
   const userId = result.meta?.last_row_id ?? 0;
   if (!userId) {
-    throw new HTTPException(500, { message: 'Failed to create user' });
+    throw new HTTPException(500, { message: "Failed to create user" });
   }
-  const pair = await createTokenPair(c.env, String(userId), 'utilisateur');
+  const pair = await createTokenPair(c.env, String(userId), "utilisateur");
   const { ip, userAgent } = await getClientInfo(c);
   const refreshTokenHash = await sha256(pair.refreshToken);
   await db
     .prepare(
-      'INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(crypto.randomUUID(), userId, refreshTokenHash, userAgent, ip, nowDb(), new Date(pair.refreshExpiresAt * 1000).toISOString(), 0)
+    .bind(
+      crypto.randomUUID(),
+      userId,
+      refreshTokenHash,
+      userAgent,
+      ip,
+      nowDb(),
+      new Date(pair.refreshExpiresAt * 1000).toISOString(),
+      0,
+    )
     .run();
   setAuthCookies(c, pair);
   return c.json(
@@ -129,38 +165,56 @@ authRoutes.post('/register', zValidator('json', registerSchema), async (c) => {
         estVerifie: false,
         consentementMarketing: data.consentementMarketing,
         dateInscription: now,
-        role: 'utilisateur',
+        role: "utilisateur",
       },
     },
-    201
+    201,
   );
 });
 
-authRoutes.post('/login', zValidator('json', loginSchema), async (c) => {
-  const data = c.req.valid('json');
+authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
+  const data = c.req.valid("json");
   const db = getD1(c.env);
-  const row = await db.prepare('SELECT * FROM utilisateurs WHERE email = ?').bind(data.email.toLowerCase().trim()).first<UserRow>();
+  const row = await db
+    .prepare("SELECT * FROM utilisateurs WHERE email = ?")
+    .bind(data.email.toLowerCase().trim())
+    .first<UserRow>();
+  console.log("Data");
+  console.log(data);
   if (!row || !(await verifyPassword(data.motDePasse, row.mot_de_passe))) {
-    throw new HTTPException(401, { message: 'Invalid credentials' });
+    throw new HTTPException(401, { message: "Invalid credentials" });
   }
   const user = mapUser(row);
   if (!user.estVerifie) {
-    throw new HTTPException(401, { message: 'Email not verified' });
+    throw new HTTPException(401, { message: "Email not verified" });
   }
   if (!user.estActif) {
-    throw new HTTPException(401, { message: 'Account disabled' });
+    throw new HTTPException(401, { message: "Account disabled" });
   }
-  await db.prepare('UPDATE utilisateurs SET date_derniere_connexion = ? WHERE id = ?').bind(nowDb(), user.id).run();
+  await db
+    .prepare("UPDATE utilisateurs SET date_derniere_connexion = ? WHERE id = ?")
+    .bind(nowDb(), user.id)
+    .run();
   const pair = await createTokenPair(c.env, String(user.id), user.role);
   const { ip, userAgent } = await getClientInfo(c);
   const refreshTokenHash = await sha256(pair.refreshToken);
   await db
     .prepare(
-      'INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(crypto.randomUUID(), user.id, refreshTokenHash, userAgent, ip, nowDb(), new Date(pair.refreshExpiresAt * 1000).toISOString(), 0)
+    .bind(
+      crypto.randomUUID(),
+      user.id,
+      refreshTokenHash,
+      userAgent,
+      ip,
+      nowDb(),
+      new Date(pair.refreshExpiresAt * 1000).toISOString(),
+      0,
+    )
     .run();
   setAuthCookies(c, pair);
+  console.log("ok");
   return c.json({
     accessToken: pair.accessToken,
     expiresAt: pair.accessExpiresAt,
@@ -168,32 +222,58 @@ authRoutes.post('/login', zValidator('json', loginSchema), async (c) => {
   });
 });
 
-authRoutes.post('/refresh', async (c) => {
+authRoutes.post("/refresh", async (c) => {
   const cookieToken = extractRefreshTokenFromCookie(c);
   if (!cookieToken) {
-    throw new HTTPException(401, { message: 'Missing refresh token' });
+    throw new HTTPException(401, { message: "Missing refresh token" });
   }
   const { userId, jti } = await verifyRefreshToken(c.env, cookieToken);
   const db = getD1(c.env);
   const tokenHash = await sha256(cookieToken);
-  const stored = await db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ?').bind(tokenHash).first<RefreshTokenRow>();
-  if (!stored || stored.est_revoke === 1 || String(stored.id_utilisateur) !== userId) {
-    throw new HTTPException(401, { message: 'Refresh token revoked or invalid' });
+  const stored = await db
+    .prepare("SELECT * FROM refresh_tokens WHERE token_hash = ?")
+    .bind(tokenHash)
+    .first<RefreshTokenRow>();
+  if (
+    !stored ||
+    stored.est_revoke === 1 ||
+    String(stored.id_utilisateur) !== userId
+  ) {
+    throw new HTTPException(401, {
+      message: "Refresh token revoked or invalid",
+    });
   }
-  const userRow = await db.prepare('SELECT * FROM utilisateurs WHERE id = ?').bind(stored.id_utilisateur).first<UserRow>();
+  const userRow = await db
+    .prepare("SELECT * FROM utilisateurs WHERE id = ?")
+    .bind(stored.id_utilisateur)
+    .first<UserRow>();
   if (!userRow || userRow.est_actif !== 1) {
-    throw new HTTPException(401, { message: 'Account disabled' });
+    throw new HTTPException(401, { message: "Account disabled" });
   }
   const user = mapUser(userRow);
-  await db.prepare('UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ?').bind(1, nowDb(), tokenHash).run();
+  await db
+    .prepare(
+      "UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ?",
+    )
+    .bind(1, nowDb(), tokenHash)
+    .run();
   const pair = await createTokenPair(c.env, String(user.id), user.role);
   const { ip, userAgent } = await getClientInfo(c);
   const newRefreshTokenHash = await sha256(pair.refreshToken);
   await db
     .prepare(
-      'INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(crypto.randomUUID(), user.id, newRefreshTokenHash, userAgent, ip, nowDb(), new Date(pair.refreshExpiresAt * 1000).toISOString(), 0)
+    .bind(
+      crypto.randomUUID(),
+      user.id,
+      newRefreshTokenHash,
+      userAgent,
+      ip,
+      nowDb(),
+      new Date(pair.refreshExpiresAt * 1000).toISOString(),
+      0,
+    )
     .run();
   setAuthCookies(c, pair);
   return c.json({
@@ -202,83 +282,123 @@ authRoutes.post('/refresh', async (c) => {
   });
 });
 
-authRoutes.post('/logout', authMiddleware, async (c) => {
+authRoutes.post("/logout", authMiddleware, async (c) => {
   const cookieToken = extractRefreshTokenFromCookie(c);
   const db = getD1(c.env);
   if (cookieToken) {
     const tokenHash = await sha256(cookieToken);
     await db
-      .prepare('UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ? AND id_utilisateur = ?')
-      .bind(1, nowDb(), tokenHash, Number(c.get('userId')))
+      .prepare(
+        "UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ? AND id_utilisateur = ?",
+      )
+      .bind(1, nowDb(), tokenHash, Number(c.get("userId")))
       .run();
   }
   clearAuthCookies(c);
   return c.json({ success: true });
 });
 
-authRoutes.get('/sessions', authMiddleware, async (c) => {
+authRoutes.get("/sessions", authMiddleware, async (c) => {
   const db = getD1(c.env);
   const { results } = await db
-    .prepare('SELECT token_hash, date_creation, user_agent, est_revoke FROM refresh_tokens WHERE id_utilisateur = ? ORDER BY date_creation DESC LIMIT 50')
-    .bind(Number(c.get('userId')))
-    .all<Pick<RefreshTokenRow, 'token_hash' | 'date_creation' | 'user_agent' | 'est_revoke'>>();
+    .prepare(
+      "SELECT token_hash, date_creation, user_agent, est_revoke FROM refresh_tokens WHERE id_utilisateur = ? ORDER BY date_creation DESC LIMIT 50",
+    )
+    .bind(Number(c.get("userId")))
+    .all<
+      Pick<
+        RefreshTokenRow,
+        "token_hash" | "date_creation" | "user_agent" | "est_revoke"
+      >
+    >();
   return c.json(
     (results ?? []).map((s) => ({
       tokenHash: s.token_hash,
       dateCreation: s.date_creation,
       userAgent: s.user_agent,
       estRevoke: s.est_revoke === 1,
-    }))
+    })),
   );
 });
 
-authRoutes.delete('/sessions/:tokenHash', authMiddleware, async (c) => {
-  const tokenHash = c.req.param('tokenHash');
+authRoutes.delete("/sessions/:tokenHash", authMiddleware, async (c) => {
+  const tokenHash = c.req.param("tokenHash");
   const db = getD1(c.env);
   const result = await db
-    .prepare('UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ? AND id_utilisateur = ?')
-    .bind(1, nowDb(), tokenHash, Number(c.get('userId')))
+    .prepare(
+      "UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ? AND id_utilisateur = ?",
+    )
+    .bind(1, nowDb(), tokenHash, Number(c.get("userId")))
     .run();
   if (!result.meta?.changes || result.meta.changes === 0) {
-    throw new HTTPException(404, { message: 'Session not found' });
+    throw new HTTPException(404, { message: "Session not found" });
   }
   return c.json({ success: true });
 });
 
-authRoutes.post('/verify-email', zValidator('json', verifyEmailSchema), async (c) => {
-  const { token } = c.req.valid('json');
-  const db = getD1(c.env);
-  const tokenRow = await db.prepare('SELECT * FROM tokens_email WHERE token = ? AND type = ? AND est_utilise = ?').bind(token, 'verification', 0).first<{
-    id: number;
-    id_utilisateur: number;
-    date_expiration: string;
-  }>();
-  if (!tokenRow) {
-    throw new HTTPException(400, { message: 'Invalid or expired verification token' });
-  }
-  if (new Date(tokenRow.date_expiration) < new Date()) {
-    throw new HTTPException(400, { message: 'Verification token expired' });
-  }
-  await db.prepare('UPDATE utilisateurs SET est_verifie = ? WHERE id = ?').bind(1, tokenRow.id_utilisateur).run();
-  await db.prepare('UPDATE tokens_email SET est_utilise = ? WHERE id = ?').bind(1, tokenRow.id).run();
-  const userRow = await db.prepare('SELECT * FROM utilisateurs WHERE id = ?').bind(tokenRow.id_utilisateur).first<UserRow>();
-  if (!userRow) {
-    throw new HTTPException(404, { message: 'User not found' });
-  }
-  const user = mapUser(userRow);
-  const pair = await createTokenPair(c.env, String(user.id), user.role);
-  const { ip, userAgent } = await getClientInfo(c);
-  const refreshTokenHash = await sha256(pair.refreshToken);
-  await db
-    .prepare(
-      'INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    )
-    .bind(crypto.randomUUID(), user.id, refreshTokenHash, userAgent, ip, nowDb(), new Date(pair.refreshExpiresAt * 1000).toISOString(), 0)
-    .run();
-  setAuthCookies(c, pair);
-  return c.json({
-    accessToken: pair.accessToken,
-    expiresAt: pair.accessExpiresAt,
-    user: userPublicFromRow(userRow),
-  });
-});
+authRoutes.post(
+  "/verify-email",
+  zValidator("json", verifyEmailSchema),
+  async (c) => {
+    const { token } = c.req.valid("json");
+    const db = getD1(c.env);
+    const tokenRow = await db
+      .prepare(
+        "SELECT * FROM tokens_email WHERE token = ? AND type = ? AND est_utilise = ?",
+      )
+      .bind(token, "verification", 0)
+      .first<{
+        id: number;
+        id_utilisateur: number;
+        date_expiration: string;
+      }>();
+    if (!tokenRow) {
+      throw new HTTPException(400, {
+        message: "Invalid or expired verification token",
+      });
+    }
+    if (new Date(tokenRow.date_expiration) < new Date()) {
+      throw new HTTPException(400, { message: "Verification token expired" });
+    }
+    await db
+      .prepare("UPDATE utilisateurs SET est_verifie = ? WHERE id = ?")
+      .bind(1, tokenRow.id_utilisateur)
+      .run();
+    await db
+      .prepare("UPDATE tokens_email SET est_utilise = ? WHERE id = ?")
+      .bind(1, tokenRow.id)
+      .run();
+    const userRow = await db
+      .prepare("SELECT * FROM utilisateurs WHERE id = ?")
+      .bind(tokenRow.id_utilisateur)
+      .first<UserRow>();
+    if (!userRow) {
+      throw new HTTPException(404, { message: "User not found" });
+    }
+    const user = mapUser(userRow);
+    const pair = await createTokenPair(c.env, String(user.id), user.role);
+    const { ip, userAgent } = await getClientInfo(c);
+    const refreshTokenHash = await sha256(pair.refreshToken);
+    await db
+      .prepare(
+        "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        crypto.randomUUID(),
+        user.id,
+        refreshTokenHash,
+        userAgent,
+        ip,
+        nowDb(),
+        new Date(pair.refreshExpiresAt * 1000).toISOString(),
+        0,
+      )
+      .run();
+    setAuthCookies(c, pair);
+    return c.json({
+      accessToken: pair.accessToken,
+      expiresAt: pair.accessExpiresAt,
+      user: userPublicFromRow(userRow),
+    });
+  },
+);

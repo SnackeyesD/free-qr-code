@@ -1,0 +1,1887 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-01T06:27:46.746Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_9su3hertb3oms9zp22h",
+      "parentId": null,
+      "type": "workspace",
+      "name": "Free QR Code API",
+      "description": "End-to-end test collection for Free QR Code SaaS API (Hono + Cloudflare Workers).",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_kq3uyizcrzms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "environment",
+      "name": "Local",
+      "data": {
+        "base_url": "http://localhost:8787",
+        "accessToken": "",
+        "refreshToken": "",
+        "userId": "",
+        "qrId": "",
+        "aliasCourt": "",
+        "campaignId": "",
+        "templateId": "",
+        "apiKey": "",
+        "apiKeySecret": ""
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "accessToken",
+          "refreshToken",
+          "userId",
+          "qrId",
+          "aliasCourt",
+          "campaignId",
+          "templateId",
+          "apiKey",
+          "apiKeySecret"
+        ]
+      },
+      "color": "#00ff00",
+      "isPrivate": false,
+      "metaSortKey": 1
+    },
+    {
+      "_id": "fld_pofqcmxx0i8ms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Auth",
+      "metaSortKey": 100
+    },
+    {
+      "_id": "fld_08rvnjrvnyd4ms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "User",
+      "metaSortKey": 200
+    },
+    {
+      "_id": "fld_4ynd935aneams9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "QR Codes",
+      "metaSortKey": 300
+    },
+    {
+      "_id": "fld_hfa3zf272qfms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Redirect / Scan",
+      "metaSortKey": 400
+    },
+    {
+      "_id": "fld_1oiwxq4a6yfms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Stats",
+      "metaSortKey": 500
+    },
+    {
+      "_id": "fld_vefyjdbr2pqms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Admin",
+      "metaSortKey": 600
+    },
+    {
+      "_id": "fld_5iupgjq9oijms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "API Keys",
+      "metaSortKey": 700
+    },
+    {
+      "_id": "fld_nqhohw5ivms9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Logs",
+      "metaSortKey": 800
+    },
+    {
+      "_id": "fld_nrwuxx1okvams9zp22h",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Tracking",
+      "metaSortKey": 900
+    },
+    {
+      "_id": "fld_bri6agn60nms9zp22i",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Smoke Test",
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "req_bbn6bt57edms9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "Register",
+      "url": "{{ base_url }}/auth/register",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"test@example.com\",\n  \"motDePasse\": \"Password123!\",\n  \"nom\": \"Test User\",\n  \"consentementMarketing\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 101,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.accessToken) {\n  insomnia.environment.set('accessToken', body.accessToken);\n}\nif (body.user && body.user.id) {\n  insomnia.environment.set('userId', body.user.id);\n}"
+    },
+    {
+      "_id": "req_xnxr53fpqcoms9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "Verify Email",
+      "url": "{{ base_url }}/auth/verify-email",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"token\": \"PASTE_VERIFICATION_TOKEN_HERE\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 102,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.accessToken) {\n  insomnia.environment.set('accessToken', body.accessToken);\n}\nif (body.user && body.user.id) {\n  insomnia.environment.set('userId', body.user.id);\n}"
+    },
+    {
+      "_id": "req_jef657h3tpdms9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "Login",
+      "url": "{{ base_url }}/auth/login",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"test@example.com\",\n  \"motDePasse\": \"Password123!\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 103,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.accessToken) {\n  insomnia.environment.set('accessToken', body.accessToken);\n}\nif (body.user && body.user.id) {\n  insomnia.environment.set('userId', body.user.id);\n}"
+    },
+    {
+      "_id": "req_bqcvm4cb8sams9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "Refresh Token",
+      "url": "{{ base_url }}/auth/refresh",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 104,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.accessToken) {\n  insomnia.environment.set('accessToken', body.accessToken);\n}"
+    },
+    {
+      "_id": "req_946o8kzkdrqms9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "Logout",
+      "url": "{{ base_url }}/auth/logout",
+      "method": "POST",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 105,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_l8iof7onvhbms9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "List Sessions",
+      "url": "{{ base_url }}/auth/sessions",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 106,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_hsnfsg2f4pims9zp22h",
+      "parentId": "fld_pofqcmxx0i8ms9zp22h",
+      "type": "request",
+      "name": "Revoke Session",
+      "url": "{{ base_url }}/auth/sessions/SESSION_HASH_HERE",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 107,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_67vnekv30fnms9zp22h",
+      "parentId": "fld_08rvnjrvnyd4ms9zp22h",
+      "type": "request",
+      "name": "Get Me",
+      "url": "{{ base_url }}/me/me",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 201,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_u0tszdwb9tams9zp22h",
+      "parentId": "fld_08rvnjrvnyd4ms9zp22h",
+      "type": "request",
+      "name": "Health",
+      "url": "{{ base_url }}/me/health",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 202,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_c7duzycdwcms9zp22h",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "List QR Codes",
+      "url": "{{ base_url }}/qrcodes",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "page",
+          "value": "1"
+        },
+        {
+          "name": "limit",
+          "value": "20"
+        },
+        {
+          "name": "type",
+          "value": "dynamique",
+          "disabled": true
+        },
+        {
+          "name": "search",
+          "value": "",
+          "disabled": true
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 301,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_4j6p27keaydms9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Create Dynamic QR Code",
+      "url": "{{ base_url }}/qrcodes",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"dynamique\",\n  \"contenu\": \"https://example.com/target\",\n  \"typeContenu\": \"url\",\n  \"design\": {\n    \"couleur\": \"#000000\",\n    \"background\": \"#ffffff\",\n    \"taille\": 512,\n    \"correction\": \"M\",\n    \"formatImage\": \"png\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 302,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('qrId', body.id);\n}\nif (body.aliasCourt) {\n  insomnia.environment.set('aliasCourt', body.aliasCourt);\n}"
+    },
+    {
+      "_id": "req_jvatddmnxvms9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Create Static QR Code",
+      "url": "{{ base_url }}/qrcodes",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"statique\",\n  \"contenu\": \"https://example.com/static\",\n  \"typeContenu\": \"url\",\n  \"design\": {\n    \"couleur\": \"#000000\",\n    \"background\": \"#ffffff\",\n    \"taille\": 512,\n    \"correction\": \"M\",\n    \"formatImage\": \"png\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 303,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('qrId', body.id);\n}\nif (body.aliasCourt) {\n  insomnia.environment.set('aliasCourt', body.aliasCourt);\n}"
+    },
+    {
+      "_id": "req_5yes45v5oycms9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Get QR Code",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 304,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_2rsq7vgke4ums9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Update QR Code",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"contenu\": \"https://example.com/updated\",\n  \"estActif\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 305,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_faa5mo34or6ms9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Delete QR Code",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 306,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_u61omyo0whms9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Download QR PNG",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}/download",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "image/png"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "format",
+          "value": "png"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 307,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_4qxls32yb4vms9zp22i",
+      "parentId": "fld_4ynd935aneams9zp22h",
+      "type": "request",
+      "name": "Download QR SVG",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}/download",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "image/svg+xml"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "format",
+          "value": "svg"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 308,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_acpuymutemoms9zp22i",
+      "parentId": "fld_hfa3zf272qfms9zp22h",
+      "type": "request",
+      "name": "Scan Redirect",
+      "url": "{{ base_url }}/q/{{ aliasCourt }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 401,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_f669czlw9nms9zp22i",
+      "parentId": "fld_1oiwxq4a6yfms9zp22h",
+      "type": "request",
+      "name": "QR Stats",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}/stats",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "from",
+          "value": "2024-01-01",
+          "disabled": true
+        },
+        {
+          "name": "to",
+          "value": "2024-12-31",
+          "disabled": true
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 501,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_dfty4nfu59oms9zp22i",
+      "parentId": "fld_1oiwxq4a6yfms9zp22h",
+      "type": "request",
+      "name": "Export Stats",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}/export",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/octet-stream"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "format",
+          "value": "json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 502,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_lj80i0e8yoms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "List Campaigns",
+      "url": "{{ base_url }}/admin/campaigns",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 601,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_z2yjycie9kms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Create Campaign",
+      "url": "{{ base_url }}/admin/campaigns",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Newsletter Test\",\n  \"sujet\": \"Test Subject\",\n  \"corpsHtml\": \"<h1>Hello</h1><p>This is a test campaign.</p>\",\n  \"corpsTexte\": \"Hello. This is a test campaign.\",\n  \"cible\": \"consentants\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 602,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('campaignId', body.id);\n}"
+    },
+    {
+      "_id": "req_510rgfs2cd4ms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Get Campaign",
+      "url": "{{ base_url }}/admin/campaigns/{{ campaignId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 603,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_szvh2rg2e3kms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Update Campaign",
+      "url": "{{ base_url }}/admin/campaigns/{{ campaignId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"sujet\": \"Updated Subject\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 604,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_r2xzc6ynnekms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Send Campaign",
+      "url": "{{ base_url }}/admin/campaigns/{{ campaignId }}/send",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 605,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_n3u3924ad8ms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "List Templates",
+      "url": "{{ base_url }}/admin/templates",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 606,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_e9aboqku7r7ms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Create Template",
+      "url": "{{ base_url }}/admin/templates",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Corporate Template\",\n  \"description\": \"Default corporate style\",\n  \"typeContenu\": \"url\",\n  \"parametresParDefaut\": {\n    \"couleur\": \"#1a73e8\",\n    \"background\": \"#ffffff\",\n    \"correction\": \"H\"\n  },\n  \"estPublic\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 607,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('templateId', body.id);\n}"
+    },
+    {
+      "_id": "req_1ps49mgal8bms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Get Template",
+      "url": "{{ base_url }}/admin/templates/{{ templateId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 608,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_gwakz2lkksoms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Update Template",
+      "url": "{{ base_url }}/admin/templates/{{ templateId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"description\": \"Updated description\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 609,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fxthddklfsfms9zp22i",
+      "parentId": "fld_vefyjdbr2pqms9zp22h",
+      "type": "request",
+      "name": "Delete Template",
+      "url": "{{ base_url }}/admin/templates/{{ templateId }}",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 610,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_qhsiiy9brtms9zp22i",
+      "parentId": "fld_5iupgjq9oijms9zp22h",
+      "type": "request",
+      "name": "List API Keys",
+      "url": "{{ base_url }}/api-keys",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 701,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_818ls2dq8mjms9zp22i",
+      "parentId": "fld_5iupgjq9oijms9zp22h",
+      "type": "request",
+      "name": "Create API Key",
+      "url": "{{ base_url }}/api-keys",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Integration Key\",\n  \"permissions\": [\n    \"qrcodes:read\",\n    \"qrcodes:create\",\n    \"stats:read\"\n  ],\n  \"dateExpiration\": \"2025-12-31T23:59:59.000Z\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 702,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.secret) {\n  insomnia.environment.set('apiKeySecret', body.secret);\n}\nif (body.id) {\n  insomnia.environment.set('apiKey', body.id);\n}"
+    },
+    {
+      "_id": "req_zcvfw69ov3nms9zp22i",
+      "parentId": "fld_5iupgjq9oijms9zp22h",
+      "type": "request",
+      "name": "Get API Key",
+      "url": "{{ base_url }}/api-keys/{{ apiKey }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 703,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_naz38frkdoms9zp22i",
+      "parentId": "fld_5iupgjq9oijms9zp22h",
+      "type": "request",
+      "name": "Revoke API Key",
+      "url": "{{ base_url }}/api-keys/{{ apiKey }}",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 704,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_r6xvgxnyixams9zp22i",
+      "parentId": "fld_nqhohw5ivms9zp22h",
+      "type": "request",
+      "name": "List QR Logs",
+      "url": "{{ base_url }}/logs",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "idQRCode",
+          "value": "{{ qrId }}"
+        },
+        {
+          "name": "limit",
+          "value": "20"
+        },
+        {
+          "name": "offset",
+          "value": "0"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 801,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_9afka2dctxtms9zp22i",
+      "parentId": "fld_nqhohw5ivms9zp22h",
+      "type": "request",
+      "name": "Create QR Log",
+      "url": "{{ base_url }}/logs",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"idQRCode\": \"{{ qrId }}\",\n  \"action\": \"modification_cible\",\n  \"ancienneValeur\": {\n    \"contenu\": \"https://old.example.com\"\n  },\n  \"nouvelleValeur\": {\n    \"contenu\": \"https://new.example.com\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 802,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_r9vjhkuc2hms9zp22i",
+      "parentId": "fld_nrwuxx1okvams9zp22h",
+      "type": "request",
+      "name": "Tracking Pixel",
+      "url": "{{ base_url }}/tracking/pixel",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "image/gif"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "t",
+          "value": "TRACKING_TOKEN_HERE"
+        }
+      ],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 901,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_njuvrla7ikgms9zp22i",
+      "parentId": "fld_nrwuxx1okvams9zp22h",
+      "type": "request",
+      "name": "Tracking Click",
+      "url": "{{ base_url }}/tracking/click",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "t",
+          "value": "TRACKING_TOKEN_HERE"
+        },
+        {
+          "name": "u",
+          "value": "https://example.com"
+        }
+      ],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 902,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_pnppgyovslms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "1. Register",
+      "url": "{{ base_url }}/auth/register",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"smoke@example.com\",\n  \"motDePasse\": \"SmokePass123!\",\n  \"nom\": \"Smoke User\",\n  \"consentementMarketing\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 1001,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.accessToken) {\n  insomnia.environment.set('accessToken', body.accessToken);\n}\nif (body.user && body.user.id) {\n  insomnia.environment.set('userId', body.user.id);\n}"
+    },
+    {
+      "_id": "req_qrh7tc8y3tbms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "2. Login",
+      "url": "{{ base_url }}/auth/login",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"smoke@example.com\",\n  \"motDePasse\": \"SmokePass123!\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 1002,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.accessToken) {\n  insomnia.environment.set('accessToken', body.accessToken);\n}\nif (body.user && body.user.id) {\n  insomnia.environment.set('userId', body.user.id);\n}"
+    },
+    {
+      "_id": "req_sbiwtiute3dms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "3. Create QR Code",
+      "url": "{{ base_url }}/qrcodes",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"dynamique\",\n  \"contenu\": \"https://example.com/smoke\",\n  \"typeContenu\": \"url\",\n  \"design\": {\n    \"couleur\": \"#000000\",\n    \"background\": \"#ffffff\",\n    \"taille\": 512,\n    \"correction\": \"M\",\n    \"formatImage\": \"png\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1003,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('qrId', body.id);\n}\nif (body.aliasCourt) {\n  insomnia.environment.set('aliasCourt', body.aliasCourt);\n}"
+    },
+    {
+      "_id": "req_gb9xn20h79ums9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "4. Get QR Code",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1004,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_q7kgugyg72ms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "5. Download QR PNG",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}/download",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "image/png"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "format",
+          "value": "png"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1005,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_y1ym2igdtyqms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "6. Scan Redirect",
+      "url": "{{ base_url }}/q/{{ aliasCourt }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 1006,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_d4fadfgjykvms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "7. Get Stats",
+      "url": "{{ base_url }}/qrcodes/{{ qrId }}/stats",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1007,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_myluhfm56tbms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "8. Create Campaign",
+      "url": "{{ base_url }}/admin/campaigns",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Smoke Campaign\",\n  \"sujet\": \"Smoke Subject\",\n  \"corpsHtml\": \"<h1>Smoke</h1><p>Smoke test campaign.</p>\",\n  \"corpsTexte\": \"Smoke test campaign.\",\n  \"cible\": \"consentants\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1008,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('campaignId', body.id);\n}"
+    },
+    {
+      "_id": "req_ykqcvax88mbms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "9. Send Campaign",
+      "url": "{{ base_url }}/admin/campaigns/{{ campaignId }}/send",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1009,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_mnx0uckak7bms9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "10. Create API Key",
+      "url": "{{ base_url }}/api-keys",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Smoke API Key\",\n  \"permissions\": [\n    \"qrcodes:read\",\n    \"stats:read\"\n  ],\n  \"dateExpiration\": \"2025-12-31T23:59:59.000Z\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1010,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.secret) {\n  insomnia.environment.set('apiKeySecret', body.secret);\n}\nif (body.id) {\n  insomnia.environment.set('apiKey', body.id);\n}"
+    },
+    {
+      "_id": "req_isqmdf8uqaems9zp22i",
+      "parentId": "fld_bri6agn60nms9zp22i",
+      "type": "request",
+      "name": "11. Revoke API Key",
+      "url": "{{ base_url }}/api-keys/{{ apiKey }}",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 1011,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    }
+  ]
+}
