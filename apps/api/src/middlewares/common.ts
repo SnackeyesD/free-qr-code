@@ -23,8 +23,6 @@ export async function corsMiddleware(
   next: import("hono").Next,
 ) {
   const origin = getCorsOrigin(c.env, c.req.header("origin"));
-  console.log("les données dans env");
-  console.log(c.env);
   if (origin) {
     c.header("Access-Control-Allow-Origin", origin);
     c.header("Vary", "Origin");

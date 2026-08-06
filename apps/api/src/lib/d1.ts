@@ -22,9 +22,11 @@ export interface RefreshTokenRow {
   id: number;
   id_utilisateur: number;
   token_hash: string;
+  access_token_jti_hash: string | null;
   user_agent: string | null;
   adresse_ip: string | null;
   date_creation: string;
+  date_derniere_utilisation: string | null;
   date_expiration: string;
   date_revocation: string | null;
   est_revoke: number;

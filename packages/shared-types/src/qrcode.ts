@@ -1,28 +1,28 @@
-import type { InternalId, PublicId } from './utilisateur.js';
+import type { InternalId, PublicId } from "./utilisateur.js";
 
 export type { InternalId, PublicId };
 
 export type TypeContenuQR =
-  | 'url'
-  | 'texte'
-  | 'email'
-  | 'telephone'
-  | 'sms'
-  | 'wifi'
-  | 'vcard'
-  | 'geo'
-  | 'pdf';
+  | "url"
+  | "texte"
+  | "email"
+  | "telephone"
+  | "sms"
+  | "wifi"
+  | "vcard"
+  | "geo"
+  | "pdf";
 
-export type TypeQR = 'statique' | 'dynamique';
+export type TypeQR = "statique" | "dynamique";
 
 export interface QRCodeDesign {
   couleur?: string;
   background?: string;
   logoUrl?: string;
   taille?: number;
-  correction?: 'L' | 'M' | 'Q' | 'H';
+  correction?: "L" | "M" | "Q" | "H";
   cadre?: boolean;
-  formatImage?: 'png' | 'svg';
+  formatImage?: "png" | "svg";
   [key: string]: unknown;
 }
 
@@ -39,6 +39,7 @@ export interface QRCode {
   dateExpiration?: Date | string;
   nombreScansTotal: number;
   urlImage?: string;
+  urlImagePng?: string;
   idModele?: PublicId;
 }
 

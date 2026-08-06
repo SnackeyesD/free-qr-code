@@ -138,14 +138,16 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
   const pair = await createTokenPair(c.env, String(userId), "utilisateur");
   const { ip, userAgent } = await getClientInfo(c);
   const refreshTokenHash = await sha256(pair.refreshToken);
+  const accessJtiHash = await sha256(pair.accessJti);
   await db
     .prepare(
-      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, access_token_jti_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(
       crypto.randomUUID(),
       userId,
       refreshTokenHash,
+      accessJtiHash,
       userAgent,
       ip,
       nowDb(),
@@ -198,14 +200,16 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
   const pair = await createTokenPair(c.env, String(user.id), user.role);
   const { ip, userAgent } = await getClientInfo(c);
   const refreshTokenHash = await sha256(pair.refreshToken);
+  const accessJtiHash = await sha256(pair.accessJti);
   await db
     .prepare(
-      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, access_token_jti_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(
       crypto.randomUUID(),
       user.id,
       refreshTokenHash,
+      accessJtiHash,
       userAgent,
       ip,
       nowDb(),
@@ -259,15 +263,17 @@ authRoutes.post("/refresh", async (c) => {
     .run();
   const pair = await createTokenPair(c.env, String(user.id), user.role);
   const { ip, userAgent } = await getClientInfo(c);
-  const newRefreshTokenHash = await sha256(pair.refreshToken);
+  const refreshTokenHash = await sha256(pair.refreshToken);
+  const accessJtiHash = await sha256(pair.accessJti);
   await db
     .prepare(
-      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, access_token_jti_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(
       crypto.randomUUID(),
       user.id,
-      newRefreshTokenHash,
+      refreshTokenHash,
+      accessJtiHash,
       userAgent,
       ip,
       nowDb(),
@@ -295,44 +301,6 @@ authRoutes.post("/logout", authMiddleware, async (c) => {
       .run();
   }
   clearAuthCookies(c);
-  return c.json({ success: true });
-});
-
-authRoutes.get("/sessions", authMiddleware, async (c) => {
-  const db = getD1(c.env);
-  const { results } = await db
-    .prepare(
-      "SELECT token_hash, date_creation, user_agent, est_revoke FROM refresh_tokens WHERE id_utilisateur = ? ORDER BY date_creation DESC LIMIT 50",
-    )
-    .bind(Number(c.get("userId")))
-    .all<
-      Pick<
-        RefreshTokenRow,
-        "token_hash" | "date_creation" | "user_agent" | "est_revoke"
-      >
-    >();
-  return c.json(
-    (results ?? []).map((s) => ({
-      tokenHash: s.token_hash,
-      dateCreation: s.date_creation,
-      userAgent: s.user_agent,
-      estRevoke: s.est_revoke === 1,
-    })),
-  );
-});
-
-authRoutes.delete("/sessions/:tokenHash", authMiddleware, async (c) => {
-  const tokenHash = c.req.param("tokenHash");
-  const db = getD1(c.env);
-  const result = await db
-    .prepare(
-      "UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE token_hash = ? AND id_utilisateur = ?",
-    )
-    .bind(1, nowDb(), tokenHash, Number(c.get("userId")))
-    .run();
-  if (!result.meta?.changes || result.meta.changes === 0) {
-    throw new HTTPException(404, { message: "Session not found" });
-  }
   return c.json({ success: true });
 });
 
@@ -379,14 +347,16 @@ authRoutes.post(
     const pair = await createTokenPair(c.env, String(user.id), user.role);
     const { ip, userAgent } = await getClientInfo(c);
     const refreshTokenHash = await sha256(pair.refreshToken);
+    const accessJtiHash = await sha256(pair.accessJti);
     await db
       .prepare(
-        "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, access_token_jti_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
         crypto.randomUUID(),
         user.id,
         refreshTokenHash,
+        accessJtiHash,
         userAgent,
         ip,
         nowDb(),

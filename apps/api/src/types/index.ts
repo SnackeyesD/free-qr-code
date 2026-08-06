@@ -31,6 +31,7 @@ export interface AppEnv {
   Variables: {
     userId?: string;
     role?: string;
+    jti?: string;
     requestId?: string;
   };
 }

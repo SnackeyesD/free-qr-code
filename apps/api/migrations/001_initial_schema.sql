@@ -231,9 +231,11 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     public_id TEXT UNIQUE NOT NULL,
     id_utilisateur INTEGER NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
     token_hash TEXT UNIQUE NOT NULL,
+    access_token_jti_hash TEXT,
     user_agent TEXT,
     adresse_ip TEXT,
     date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    date_derniere_utilisation DATETIME,
     date_expiration DATETIME NOT NULL,
     date_revocation DATETIME,
     est_revoke INTEGER NOT NULL DEFAULT 0 CHECK (est_revoke IN (0, 1)),
@@ -243,6 +245,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_access_jti_hash ON refresh_tokens(access_token_jti_hash);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_utilisateur_creation ON refresh_tokens(id_utilisateur, date_creation);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expiration ON refresh_tokens(date_expiration);
 

@@ -1,5 +1,31 @@
 import { toBuffer, toString } from "qrcode";
 import type { QRCodeDesign } from "@free-qr/shared-types";
+import { Resvg, initWasm } from "@resvg/resvg-wasm";
+import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
+
+import { PDFDocument } from "pdf-lib";
+
+async function pngToPdf(pngBytes: Uint8Array, size: number): Promise<ArrayBuffer> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([size, size]);
+  const pngImage = await pdfDoc.embedPng(pngBytes);
+  page.drawImage(pngImage, { x: 0, y: 0, width: size, height: size });
+  return pdfDoc.save();
+}
+
+let wasmInitialized = false;
+async function ensureWasmInit() {
+  if (!wasmInitialized) {
+    await initWasm(resvgWasm);
+    wasmInitialized = true;
+  }
+}
+
+async function svgToPng(svgString: string, width: number): Promise<Uint8Array> {
+  await ensureWasmInit();
+  const resvg = new Resvg(svgString, { fitTo: { mode: "width", value: width } });
+  return resvg.render().asPng();
+}
 
 export async function generateQRCodeImage(
   content: string,
