@@ -1,9 +1,9 @@
 name = "free-qr-api"
 main = "src/index.ts"
 compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
-JWT_TRACKING_SECRET = "dev-tracking-secret-change-me"
 SMTP_FROM = "noreply@free-qrcode.app"
 
 [[r2_buckets]]
@@ -13,5 +13,5 @@ bucket_name = "qr-saas-images"
 [[d1_databases]]
 binding = "DB"
 database_name = "free-qr-api-db"
-database_id = "<your-d1-database-id>"
+database_id = "1bdd4b44-714d-4af1-931d-cb5b253ffc76"
 migrations_dir = "migrations"

@@ -93,13 +93,10 @@ qrCodeRoutes.get(
     );
     const filename = `qr-${id}.${extension}`;
 
-    return new Response(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": mimeType,
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "public, max-age=31536000",
-      },
+    return c.body(buffer, 200, {
+      "Content-Type": mimeType,
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "public, max-age=31536000",
     });
   },
 );

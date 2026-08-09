@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
+import { sendVerificationEmail } from "../services/email.js";
 import {
   getD1,
   nowDb,
@@ -135,10 +136,42 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
   if (!userId) {
     throw new HTTPException(500, { message: "Failed to create user" });
   }
+
   const pair = await createTokenPair(c.env, String(userId), "utilisateur");
   const { ip, userAgent } = await getClientInfo(c);
   const refreshTokenHash = await sha256(pair.refreshToken);
   const accessJtiHash = await sha256(pair.accessJti);
+
+  // --- Token de vérification email (colonnes réelles de tokens_email) ---
+  const verificationTokenPlain = crypto.randomUUID();
+  const verificationTokenHash = await sha256(verificationTokenPlain);
+  const tokenExpiresAt = new Date(
+    Date.now() + 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  await db
+    .prepare(
+      "INSERT INTO tokens_email (public_id, id_utilisateur, token_hash, type, date_expiration, est_utilise) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(
+      crypto.randomUUID(),
+      userId,
+      verificationTokenHash,
+      "verification",
+      tokenExpiresAt,
+      0,
+    )
+    .run();
+
+  const verifyLink = `${c.env.FRONTEND_URL}/verify-email?token=${verificationTokenPlain}`;
+  console.log("Les information du verify", verifyLink);
+
+  // Envoi asynchrone, ne bloque pas la réponse à l'utilisateur
+  c.executionCtx.waitUntil(
+    sendVerificationEmail(c.env, data.email.toLowerCase().trim(), verifyLink),
+  );
+
+  // --- refresh_tokens (celui-là a bien user_agent/adresse_ip) ---
   await db
     .prepare(
       "INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, access_token_jti_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -155,6 +188,7 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
       0,
     )
     .run();
+
   setAuthCookies(c, pair);
   return c.json(
     {
@@ -310,16 +344,20 @@ authRoutes.post(
   async (c) => {
     const { token } = c.req.valid("json");
     const db = getD1(c.env);
+
+    const tokenHash = await sha256(token);
+
+    console.log("le token réçu ", tokenHash);
     const tokenRow = await db
-      .prepare(
-        "SELECT * FROM tokens_email WHERE token = ? AND type = ? AND est_utilise = ?",
-      )
-      .bind(token, "verification", 0)
+      .prepare("SELECT * FROM tokens_email WHERE token_hash = ? AND type = ? ")
+      .bind(tokenHash, "verification")
       .first<{
         id: number;
         id_utilisateur: number;
         date_expiration: string;
       }>();
+
+    console.log("Les comparaisons ", tokenRow);
     if (!tokenRow) {
       throw new HTTPException(400, {
         message: "Invalid or expired verification token",

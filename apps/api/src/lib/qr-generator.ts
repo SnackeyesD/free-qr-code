@@ -1,11 +1,18 @@
 import { toBuffer, toString } from "qrcode";
 import type { QRCodeDesign } from "@free-qr/shared-types";
-import { Resvg, initWasm } from "@resvg/resvg-wasm";
-import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
-
+import { Resvg } from "@cf-wasm/resvg/workerd";
 import { PDFDocument } from "pdf-lib";
 
-async function pngToPdf(pngBytes: Uint8Array, size: number): Promise<ArrayBuffer> {
+export interface GeneratedImage {
+  buffer: ArrayBuffer;
+  mimeType: string;
+  extension: string;
+}
+
+async function pngToPdf(
+  pngBytes: Uint8Array,
+  size: number,
+): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([size, size]);
   const pngImage = await pdfDoc.embedPng(pngBytes);
@@ -13,24 +20,18 @@ async function pngToPdf(pngBytes: Uint8Array, size: number): Promise<ArrayBuffer
   return pdfDoc.save();
 }
 
-let wasmInitialized = false;
-async function ensureWasmInit() {
-  if (!wasmInitialized) {
-    await initWasm(resvgWasm);
-    wasmInitialized = true;
-  }
-}
-
 async function svgToPng(svgString: string, width: number): Promise<Uint8Array> {
-  await ensureWasmInit();
-  const resvg = new Resvg(svgString, { fitTo: { mode: "width", value: width } });
-  return resvg.render().asPng();
+  const resvg = new Resvg(svgString, {
+    fitTo: { mode: "width", value: width },
+  });
+  const rendered = resvg.render();
+  return rendered.asPng();
 }
 
 export async function generateQRCodeImage(
   content: string,
   design: QRCodeDesign = {},
-): Promise<{ buffer: ArrayBuffer; mimeType: string; extension: string }> {
+): Promise<GeneratedImage> {
   const formatImage = design.formatImage || "png";
   const width = design.taille || 512;
   const color = {
@@ -47,10 +48,33 @@ export async function generateQRCodeImage(
     margin,
     errorCorrectionLevel,
   });
-  const buffer = new TextEncoder().encode(svgString).buffer as ArrayBuffer;
-  return { buffer, mimeType: "image/svg+xml", extension: "svg" };
-}
 
+  if (formatImage === "svg") {
+    const buffer = new TextEncoder().encode(svgString).buffer as ArrayBuffer;
+    return { buffer, mimeType: "image/svg+xml", extension: "svg" };
+  }
+
+  const pngBytes = await svgToPng(svgString, width);
+
+  if (formatImage === "png") {
+    return {
+      buffer: pngBytes.buffer as ArrayBuffer,
+      mimeType: "image/png",
+      extension: "png",
+    };
+  }
+
+  if (formatImage === "pdf") {
+    const pdfBytes = await pngToPdf(pngBytes, width);
+    return {
+      buffer: pdfBytes.buffer as ArrayBuffer,
+      mimeType: "application/pdf",
+      extension: "pdf",
+    };
+  }
+
+  throw new Error(`Format non supporté: ${formatImage}`);
+}
 export function detectTypeContenu(input: string): string {
   const trimmed = input.trim().toLowerCase();
   if (/^https?:\/\//i.test(input) || trimmed.startsWith("www.")) return "url";

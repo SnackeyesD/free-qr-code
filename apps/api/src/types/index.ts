@@ -1,10 +1,17 @@
-import type { Context, Env, Hono, Next, Handler } from 'hono';
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
+import type { Context, Env, Hono, Next, Handler } from "hono";
+import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 
 declare global {
   interface KVNamespace {
-    get(key: string, type?: 'text' | 'json' | 'arrayBuffer' | 'stream'): Promise<unknown | null>;
-    put(key: string, value: string | ArrayBuffer | ReadableStream, options?: { expiration?: number; expirationTtl?: number }): Promise<void>;
+    get(
+      key: string,
+      type?: "text" | "json" | "arrayBuffer" | "stream",
+    ): Promise<unknown | null>;
+    put(
+      key: string,
+      value: string | ArrayBuffer | ReadableStream,
+      options?: { expiration?: number; expirationTtl?: number },
+    ): Promise<void>;
     delete(key: string): Promise<void>;
   }
 }
@@ -17,6 +24,8 @@ export interface AppEnv {
     JWT_REFRESH_SALT?: string;
     API_BASE_URL: string;
     CORS_ORIGINS: string;
+    FRONTEND_URL: String;
+    EMAIL_WORKER_URL: string;
     ACCESS_TOKEN_TTL_SECONDS: string;
     REFRESH_TOKEN_TTL_DAYS: string;
     RATE_LIMIT_WINDOW_SECONDS: string;
@@ -66,7 +75,7 @@ export interface UserDoc {
   dateDerniereConnexion?: Date | string;
   preferences?: Record<string, unknown>;
   estActif: boolean;
-  role: 'utilisateur' | 'admin';
+  role: "utilisateur" | "admin";
 }
 
 export interface RefreshTokenDoc {
@@ -82,15 +91,15 @@ export interface RefreshTokenDoc {
 }
 
 export type TypeContenuQR =
-  | 'url'
-  | 'texte'
-  | 'email'
-  | 'telephone'
-  | 'sms'
-  | 'wifi'
-  | 'vcard'
-  | 'geo'
-  | 'pdf';
+  | "url"
+  | "texte"
+  | "email"
+  | "telephone"
+  | "sms"
+  | "wifi"
+  | "vcard"
+  | "geo"
+  | "pdf";
 
 export interface QRCodeDoc {
   id: number;
@@ -139,7 +148,7 @@ export interface TokenPair {
 }
 
 export interface AuthenticatedContext extends AppContext {
-  get var(): AppEnv['Variables'] & { userId: string; role: string };
+  get var(): AppEnv["Variables"] & { userId: string; role: string };
 }
 
 export type AppNext = Next;
