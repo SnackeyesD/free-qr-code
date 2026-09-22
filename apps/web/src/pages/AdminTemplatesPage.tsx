@@ -23,7 +23,7 @@ export default function AdminTemplatesPage() {
     deleteTemplate,
   } = useTemplates();
 
-  const { template: editingTemplate, isLoading: isEditingTemplate } = useTemplate(editId ?? undefined);
+  const { template: editingTemplate, isLoading: isEditingTemplate, updateTemplate } = useTemplate(editId ?? undefined);
 
   const totalPages = Math.max(1, Math.ceil(total / filters.limit));
 
@@ -33,10 +33,8 @@ export default function AdminTemplatesPage() {
     try {
       await createTemplate({
         nom: data.nom,
-        type: data.type,
-        contenu: data.contenu,
+        description: data.description || undefined,
         estPublic: data.estPublic,
-        categorie: data.categorie,
         typeContenu: data.typeContenu,
         parametresParDefaut: buildTemplateDesignFromForm(data),
       });
@@ -53,18 +51,12 @@ export default function AdminTemplatesPage() {
     setIsSubmitting(true);
     setFormError(null);
     try {
-      await fetch(`/admin/templates/${editId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nom: data.nom,
-          type: data.type,
-          contenu: data.contenu,
-          estPublic: data.estPublic,
-          categorie: data.categorie,
-          typeContenu: data.typeContenu,
-          parametresParDefaut: buildTemplateDesignFromForm(data),
-        }),
+      await updateTemplate({
+        nom: data.nom,
+        description: data.description || undefined,
+        estPublic: data.estPublic,
+        typeContenu: data.typeContenu,
+        parametresParDefaut: buildTemplateDesignFromForm(data),
       });
       closeForm();
       await refetch();
@@ -101,10 +93,7 @@ export default function AdminTemplatesPage() {
     ? {
         nom: editingTemplate.nom,
         description: editingTemplate.description ?? '',
-        type: 'statique' as const,
-        contenu: '',
         estPublic: editingTemplate.estPublic,
-        categorie: '',
         typeContenu: editingTemplate.typeContenu ?? 'url',
         taille: editingTemplate.parametresParDefaut?.taille ?? 300,
         correction: editingTemplate.parametresParDefaut?.correction ?? 'M',

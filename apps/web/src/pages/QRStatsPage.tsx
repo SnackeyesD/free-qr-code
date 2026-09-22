@@ -4,7 +4,7 @@ import { useQRStats } from '@/hooks/useQRStats';
 
 export default function QRStatsPage() {
   const { id } = useParams<{ id: string }>();
-  const { stats, dailyStats, recentScans, isLoading, error, period, setPeriod } = useQRStats(id);
+  const { stats, dailyStats, isLoading, error, period, setPeriod } = useQRStats(id);
 
   const deviceEntries = useMemo(() => {
     if (!stats?.appareils) return [];
@@ -144,38 +144,6 @@ export default function QRStatsPage() {
                 </div>
               );
             })}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-lg bg-white p-6 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900">Scans récents</h3>
-        {recentScans.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">Aucun scan récent.</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-gray-200">
-                <tr>
-                  <th className="pb-2 text-left font-medium text-gray-500">Date</th>
-                  <th className="pb-2 text-left font-medium text-gray-500">Pays</th>
-                  <th className="pb-2 text-left font-medium text-gray-500">Appareil</th>
-                  <th className="pb-2 text-left font-medium text-gray-500">IP</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentScans.map((scan) => (
-                  <tr key={scan.id}>
-                    <td className="py-2 text-gray-900">
-                      {new Date(scan.dateScan).toLocaleString('fr-FR')}
-                    </td>
-                    <td className="py-2 text-gray-700">{scan.pays || '—'}</td>
-                    <td className="py-2 text-gray-700">{scan.userAgent || '—'}</td>
-                    <td className="py-2 text-gray-700">{scan.adresseIP}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>

@@ -22,8 +22,6 @@ export function QRCreateForm() {
     updateValue,
     design,
     setDesignValue,
-    alias,
-    setAlias,
     encodedContent,
     fields,
     isValid,
@@ -43,7 +41,7 @@ export function QRCreateForm() {
     const input: QRCodeInput = {
       type: qrType,
       contenu: encodedContent,
-      design,
+      parametres: design,
     };
 
     const created = await create(input);
@@ -143,22 +141,6 @@ export function QRCreateForm() {
               )}
             </div>
           ))}
-
-          {qrType === 'dynamique' && (
-            <div>
-              <label htmlFor="qr-alias" className="block text-sm font-medium text-gray-700">
-                Alias court (optionnel)
-              </label>
-              <input
-                id="qr-alias"
-                type="text"
-                value={alias}
-                onChange={(e) => setAlias(e.target.value)}
-                placeholder="mon-lien"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-              />
-            </div>
-          )}
 
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Design</h3>

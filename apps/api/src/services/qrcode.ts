@@ -89,7 +89,7 @@ export async function createQRCode(
     taille: 512,
     correction: 'M',
     cadre: true,
-    ...input.design,
+    ...input.parametres,
   };
 
   const aliasCourt = isDynamic ? await ensureUniqueAlias(env) : null;
@@ -97,7 +97,7 @@ export async function createQRCode(
   const qrContent = isDynamic && aliasCourt ? `${baseUrl}/q/${aliasCourt}` : encodedContent;
 
   const publicId = crypto.randomUUID();
-  const idModele = input.design?.idModele ? Number(input.design.idModele) : null;
+  const idModele = input.parametres?.idModele ? Number(input.parametres.idModele) : null;
 
   const qrId = await d1Insert(
     env,
@@ -202,49 +202,44 @@ export async function listQRCodes(
   };
 }
 
+export async function resolveQRCodeRow(
+  env: AppEnv['Bindings'],
+  userId: string,
+  qrId: string,
+): Promise<QRCodeRow> {
+  const idUtilisateur = Number(userId);
+  if (!Number.isFinite(idUtilisateur) || !qrId) {
+    throw new HTTPException(400, { message: 'Invalid QR code id' });
+  }
+  // Accepte l'id interne numérique ET le public_id UUID exposé en API.
+  const byNumericId = /^\d+$/.test(qrId)
+    ? await d1First<QRCodeRow>(
+        env,
+        'SELECT * FROM qrcodes WHERE id = ? AND id_utilisateur = ?',
+        Number(qrId),
+        idUtilisateur,
+      )
+    : null;
+  const row =
+    byNumericId ??
+    (await d1First<QRCodeRow>(
+      env,
+      'SELECT * FROM qrcodes WHERE public_id = ? AND id_utilisateur = ?',
+      qrId,
+      idUtilisateur,
+    ));
+  if (!row) {
+    throw new HTTPException(404, { message: 'QR code not found' });
+  }
+  return row;
+}
+
 export async function getQRCodeById(
   env: AppEnv['Bindings'],
   userId: string,
   qrId: string,
 ): Promise<QRCodeType> {
-  const id = Number(qrId);
-  const idUtilisateur = Number(userId);
-  if (!Number.isFinite(id) || !Number.isFinite(idUtilisateur)) {
-    throw new HTTPException(400, { message: 'Invalid QR code id' });
-  }
-
-  const row = await d1First<QRCodeRow>(
-    env,
-    'SELECT * FROM qrcodes WHERE id = ? AND id_utilisateur = ?',
-    id,
-    idUtilisateur,
-  );
-  if (!row) {
-    throw new HTTPException(404, { message: 'QR code not found' });
-  }
-  return toPublicQR(row);
-}
-
-export async function getQRCodeByPublicId(
-  env: AppEnv['Bindings'],
-  userId: string,
-  publicId: string,
-): Promise<QRCodeType> {
-  const idUtilisateur = Number(userId);
-  if (!Number.isFinite(idUtilisateur)) {
-    throw new HTTPException(400, { message: 'Invalid user id' });
-  }
-
-  const row = await d1First<QRCodeRow>(
-    env,
-    'SELECT * FROM qrcodes WHERE public_id = ? AND id_utilisateur = ?',
-    publicId,
-    idUtilisateur,
-  );
-  if (!row) {
-    throw new HTTPException(404, { message: 'QR code not found' });
-  }
-  return toPublicQR(row);
+  return toPublicQR(await resolveQRCodeRow(env, userId, qrId));
 }
 
 export async function updateQRCode(
@@ -253,21 +248,8 @@ export async function updateQRCode(
   qrId: string,
   input: UpdateQRCodeInput,
 ): Promise<QRCodeType> {
-  const id = Number(qrId);
-  const idUtilisateur = Number(userId);
-  if (!Number.isFinite(id) || !Number.isFinite(idUtilisateur)) {
-    throw new HTTPException(400, { message: 'Invalid QR code id' });
-  }
-
-  const existing = await d1First<QRCodeRow>(
-    env,
-    'SELECT * FROM qrcodes WHERE id = ? AND id_utilisateur = ?',
-    id,
-    idUtilisateur,
-  );
-  if (!existing) {
-    throw new HTTPException(404, { message: 'QR code not found' });
-  }
+  const existing = await resolveQRCodeRow(env, userId, qrId);
+  const numericId = existing.id;
 
   const updates: Partial<QRCodeRow> = {};
   const updateFields: string[] = [];
@@ -295,7 +277,7 @@ export async function updateQRCode(
     updateFields.push(`${key} = ?`);
     updateParams.push(value as D1BindValue);
   }
-  updateParams.push(id);
+  updateParams.push(numericId);
 
   await d1Run(env, `UPDATE qrcodes SET ${updateFields.join(', ')} WHERE id = ?`, ...updateParams);
 
@@ -309,11 +291,11 @@ export async function updateQRCode(
       : updated.contenu;
     const parametres = parseParameters(updated.parametres);
     const { buffer, mimeType, extension } = await generateQRCodeImage(qrContent, parametres);
-    const key = buildQRImageKey(userId, qrId, extension);
+    const key = buildQRImageKey(userId, String(numericId), extension);
     if (env.QR_IMAGES) {
       await uploadQRImage(env.QR_IMAGES, key, buffer, mimeType);
       updated.url_image = getPublicR2Url(env, key);
-      await d1Run(env, 'UPDATE qrcodes SET url_image = ? WHERE id = ?', updated.url_image, id);
+      await d1Run(env, 'UPDATE qrcodes SET url_image = ? WHERE id = ?', updated.url_image, numericId);
     }
   }
 
@@ -325,27 +307,13 @@ export async function deleteQRCode(
   userId: string,
   qrId: string,
 ): Promise<void> {
-  const id = Number(qrId);
-  const idUtilisateur = Number(userId);
-  if (!Number.isFinite(id) || !Number.isFinite(idUtilisateur)) {
-    throw new HTTPException(400, { message: 'Invalid QR code id' });
-  }
+  const row = await resolveQRCodeRow(env, userId, qrId);
 
-  const row = await d1First<QRCodeRow>(
-    env,
-    'SELECT * FROM qrcodes WHERE id = ? AND id_utilisateur = ?',
-    id,
-    idUtilisateur,
-  );
-  if (!row) {
-    throw new HTTPException(404, { message: 'QR code not found' });
-  }
-
-  await d1Run(env, 'DELETE FROM qrcodes WHERE id = ?', id);
+  await d1Run(env, 'DELETE FROM qrcodes WHERE id = ?', row.id);
 
   if (row.url_image && env.QR_IMAGES) {
     const parametres = parseParameters(row.parametres);
-    const key = buildQRImageKey(userId, qrId, parametres.formatImage === 'svg' ? 'svg' : 'png');
+    const key = buildQRImageKey(userId, String(row.id), parametres.formatImage === 'svg' ? 'svg' : 'png');
     await deleteQRImage(env.QR_IMAGES, key).catch(() => undefined);
   }
 }

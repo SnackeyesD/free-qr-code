@@ -34,11 +34,22 @@ const verifyEmailSchema = z.object({
   token: z.string().min(1),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email().transform((v) => v.toLowerCase().trim()),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  motDePasse: z.string().min(8),
+});
+
 export const authRoutes = new Hono<AppEnv>();
 
 authRoutes.use('/register', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
 authRoutes.use('/login', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
 authRoutes.use('/refresh', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
+authRoutes.use('/forgot-password', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
+authRoutes.use('/reset-password', rateLimitMiddleware as import('hono').MiddlewareHandler<AppEnv>);
 
 export function getClientIp(c: AppContext): string {
   const cf = c.req.header('CF-Connecting-IP');
@@ -116,6 +127,22 @@ authRoutes.post('/register', zValidator('json', registerSchema), async (c) => {
       'INSERT INTO refresh_tokens (public_id, id_utilisateur, token_hash, user_agent, adresse_ip, date_creation, date_expiration, est_revoke) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
     .bind(crypto.randomUUID(), userId, refreshTokenHash, userAgent, ip, nowDb(), new Date(pair.refreshExpiresAt * 1000).toISOString(), 0)
+    .run();
+  // Jeton de vérification email (24h). Sans SMTP configuré, l'utilisateur
+  // le récupère via un renvoi / debug ; le login reste bloqué tant que
+  // est_verifie = 0.
+  await db
+    .prepare(
+      'INSERT INTO tokens_email (public_id, id_utilisateur, token_hash, type, date_expiration, est_utilise) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    .bind(
+      crypto.randomUUID(),
+      userId,
+      crypto.randomUUID(),
+      'verification',
+      new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      0
+    )
     .run();
   setAuthCookies(c, pair);
   return c.json(
@@ -248,7 +275,7 @@ authRoutes.delete('/sessions/:tokenHash', authMiddleware, async (c) => {
 authRoutes.post('/verify-email', zValidator('json', verifyEmailSchema), async (c) => {
   const { token } = c.req.valid('json');
   const db = getD1(c.env);
-  const tokenRow = await db.prepare('SELECT * FROM tokens_email WHERE token = ? AND type = ? AND est_utilise = ?').bind(token, 'verification', 0).first<{
+  const tokenRow = await db.prepare('SELECT * FROM tokens_email WHERE token_hash = ? AND type = ? AND est_utilise = ?').bind(token, 'verification', 0).first<{
     id: number;
     id_utilisateur: number;
     date_expiration: string;
@@ -281,4 +308,54 @@ authRoutes.post('/verify-email', zValidator('json', verifyEmailSchema), async (c
     expiresAt: pair.accessExpiresAt,
     user: userPublicFromRow(userRow),
   });
+});
+
+authRoutes.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c) => {
+  const { email } = c.req.valid('json');
+  const db = getD1(c.env);
+  // Réponse uniforme (anti-énumération) : 200 même si l'email est inconnu.
+  const userRow = await db
+    .prepare('SELECT id FROM utilisateurs WHERE email = ?')
+    .bind(email)
+    .first<{ id: number }>();
+  if (userRow) {
+    await db
+      .prepare(
+        'INSERT INTO tokens_email (public_id, id_utilisateur, token_hash, type, date_expiration, est_utilise) VALUES (?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        crypto.randomUUID(),
+        userRow.id,
+        crypto.randomUUID(),
+        'reinitialisation',
+        new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        0
+      )
+      .run();
+  }
+  return c.json({ success: true });
+});
+
+authRoutes.post('/reset-password', zValidator('json', resetPasswordSchema), async (c) => {
+  const { token, motDePasse } = c.req.valid('json');
+  const db = getD1(c.env);
+  const tokenRow = await db
+    .prepare('SELECT id, id_utilisateur, date_expiration FROM tokens_email WHERE token_hash = ? AND type = ? AND est_utilise = ?')
+    .bind(token, 'reinitialisation', 0)
+    .first<{ id: number; id_utilisateur: number; date_expiration: string }>();
+  if (!tokenRow) {
+    throw new HTTPException(400, { message: 'Invalid or expired reset token' });
+  }
+  if (new Date(tokenRow.date_expiration) < new Date()) {
+    throw new HTTPException(400, { message: 'Reset token expired' });
+  }
+  const hashed = await hashPassword(motDePasse);
+  await db.prepare('UPDATE utilisateurs SET mot_de_passe = ? WHERE id = ?').bind(hashed, tokenRow.id_utilisateur).run();
+  await db.prepare('UPDATE tokens_email SET est_utilise = ?, date_utilisation = ? WHERE id = ?').bind(1, nowDb(), tokenRow.id).run();
+  // Le mot de passe ayant changé, toutes les sessions existantes sont révoquées.
+  await db
+    .prepare('UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE id_utilisateur = ? AND est_revoke = ?')
+    .bind(1, nowDb(), tokenRow.id_utilisateur, 0)
+    .run();
+  return c.json({ success: true });
 });

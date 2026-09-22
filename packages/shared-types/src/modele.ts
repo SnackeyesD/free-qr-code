@@ -25,10 +25,8 @@ export interface ModeleQRInternal {
 
 export interface ModeleQRInput {
   nom: string;
-  type: 'statique' | 'dynamique';
-  contenu: string;
-  estPublic: boolean;
-  categorie?: string;
+  description?: string;
   typeContenu?: TypeContenuQR;
   parametresParDefaut?: QRCodeDesign;
+  estPublic?: boolean;
 }

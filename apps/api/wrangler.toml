@@ -10,8 +10,18 @@ SMTP_FROM = "noreply@free-qrcode.app"
 binding = "QR_IMAGES"
 bucket_name = "qr-saas-images"
 
+# Rate limiting distribué (requis en prod multi-isolates ; repli mémoire sinon).
+# Créez le namespace puis décommentez :
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "<your-kv-namespace-id>"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "free-qr-api-db"
-database_id = "<your-d1-database-id>"
+database_id = "1bdd4b44-714d-4af1-931d-cb5b253ffc76"
 migrations_dir = "migrations"
+
+# Envoi des campagnes programmées dues (toutes les 15 min).
+[triggers]
+crons = ["*/15 * * * *"]

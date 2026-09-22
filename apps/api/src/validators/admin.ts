@@ -32,6 +32,35 @@ export const sendCampaignSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
 });
 
+export const listCampaignsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  statut: z.enum(['brouillon', 'programmee', 'envoyee', 'annulee']).optional(),
+  search: z.string().max(200).optional(),
+});
+
+export const listTemplatesSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().max(200).optional(),
+});
+
+export const listUsersSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().max(200).optional(),
+  role: z.enum(['utilisateur', 'admin']).optional(),
+});
+
+export const updateUserSchema = z
+  .object({
+    estActif: z.boolean().optional(),
+    role: z.enum(['utilisateur', 'admin']).optional(),
+  })
+  .refine((v) => v.estActif !== undefined || v.role !== undefined, {
+    message: 'Au moins un champ (estActif, role) est requis',
+  });
+
 const typeContenuValues: readonly TypeContenuQR[] = [
   'url',
   'texte',
@@ -73,5 +102,9 @@ export const updateTemplateSchema = z.object({
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>;
 export type SendCampaignInput = z.infer<typeof sendCampaignSchema>;
+export type ListCampaignsInput = z.infer<typeof listCampaignsSchema>;
+export type ListTemplatesInput = z.infer<typeof listTemplatesSchema>;
+export type ListUsersInput = z.infer<typeof listUsersSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type CreateTemplateInput = z.infer<typeof createTemplateSchema>;
 export type UpdateTemplateInput = z.infer<typeof updateTemplateSchema>;

@@ -34,7 +34,7 @@ describe('QRCode API', () => {
         type: 'dynamique',
         contenu: 'https://example.com/updated',
         typeContenu: 'url',
-        design: { taille: 512, correction: 'M', cadre: true },
+        parametres: { taille: 512, correction: 'M', cadre: true },
       },
       headers: authHeaders(token),
     });
@@ -128,6 +128,53 @@ describe('QRCode API', () => {
     const created = (await create.json()) as { id: string };
     const res = await makeRequest(app, ctx.env, 'GET', `/qrcodes/${created.id}`, { headers: authHeaders(tokenB) });
     expect(res.status).toBe(404);
+  });
+
+  it('GET /qrcodes/:id accepte le public_id UUID comme alias de lecture', async () => {
+    const token = await loginUser('qruser9@example.com');
+    const create = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: { type: 'statique', contenu: 'https://public-id.com', typeContenu: 'url' },
+      headers: authHeaders(token),
+    });
+    const created = (await create.json()) as { id: string };
+    const row = ctx.db.prepare('SELECT public_id FROM qrcodes WHERE id = ?').get(Number(created.id)) as {
+      public_id: string;
+    };
+
+    const byNumeric = await makeRequest(app, ctx.env, 'GET', `/qrcodes/${created.id}`, {
+      headers: authHeaders(token),
+    });
+    expect(byNumeric.status).toBe(200);
+
+    const byPublicId = await makeRequest(app, ctx.env, 'GET', `/qrcodes/${row.public_id}`, {
+      headers: authHeaders(token),
+    });
+    expect(byPublicId.status).toBe(200);
+    expect(((await byPublicId.json()) as { id: string }).id).toBe(created.id);
+
+    const unknown = await makeRequest(app, ctx.env, 'GET', '/qrcodes/00000000-0000-4000-8000-000000000000', {
+      headers: authHeaders(token),
+    });
+    expect(unknown.status).toBe(404);
+  });
+
+  it('PATCH /qrcodes/:id accepte le public_id UUID', async () => {
+    const token = await loginUser('qruser10@example.com');
+    const create = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: { type: 'dynamique', contenu: 'https://patch-pub.com', typeContenu: 'url' },
+      headers: authHeaders(token),
+    });
+    const created = (await create.json()) as { id: string };
+    const row = ctx.db.prepare('SELECT public_id FROM qrcodes WHERE id = ?').get(Number(created.id)) as {
+      public_id: string;
+    };
+
+    const patch = await makeRequest(app, ctx.env, 'PATCH', `/qrcodes/${row.public_id}`, {
+      headers: authHeaders(token),
+      body: { estActif: false },
+    });
+    expect(patch.status).toBe(200);
+    expect(((await patch.json()) as { estActif: boolean }).estActif).toBe(false);
   });
 });
 

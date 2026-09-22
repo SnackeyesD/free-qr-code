@@ -13,7 +13,7 @@ interface AuthContextValue {
 
 interface AuthResponse {
   accessToken: string;
-  expiresIn: number;
+  expiresAt: number;
   user: User;
 }
 
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     api
-      .get<User>('/me')
+      .get<User>('/me/me')
       .then((res) => setUser(res.data))
       .catch(() => {
         localStorage.removeItem('accessToken');

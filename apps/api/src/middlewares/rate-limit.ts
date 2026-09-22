@@ -69,6 +69,8 @@ export async function rateLimitMiddleware(c: AppContext, next: import('hono').Ne
   const kv = c.env.RATE_LIMIT_KV;
   const allowed = kv ? await checkKvLimit(c) : await checkInMemoryLimit(c);
   if (!allowed) {
+    const { windowSeconds } = parseRateLimitEnv(c.env);
+    c.header('Retry-After', String(windowSeconds));
     throw new HTTPException(429, { message: 'Too many requests' });
   }
   await next();

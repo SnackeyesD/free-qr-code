@@ -9,7 +9,7 @@ interface UseQRReturn {
   refetch: () => Promise<void>;
   update: (input: QRCodeUpdateInput) => Promise<QRCode | null>;
   remove: () => Promise<boolean>;
-  downloadImage: (format: 'png' | 'svg' | 'pdf') => Promise<void>;
+  downloadImage: (format: 'png' | 'svg') => Promise<void>;
   toggleActive: () => Promise<QRCode | null>;
 }
 
@@ -63,7 +63,7 @@ export function useQR(id: string | undefined): UseQRReturn {
   }, [id]);
 
   const downloadImage = useCallback(
-    async (format: 'png' | 'svg' | 'pdf' = 'png') => {
+    async (format: 'png' | 'svg' = 'png') => {
       if (!id || !qr) return;
       const blob = await qrApi.downloadImage(id, format);
       const url = URL.createObjectURL(blob);

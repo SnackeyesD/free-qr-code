@@ -18,12 +18,10 @@ interface UseTemplatesReturn {
   refetch: () => Promise<void>;
   createTemplate: (input: {
     nom: string;
-    type: 'statique' | 'dynamique';
-    contenu: string;
-    estPublic: boolean;
-    categorie?: string;
+    description?: string;
     typeContenu?: TypeContenuQR;
     parametresParDefaut?: QRCodeDesign;
+    estPublic?: boolean;
   }) => Promise<ModeleQR>;
   deleteTemplate: (id: string) => Promise<void>;
 }
@@ -67,12 +65,10 @@ export function useTemplates(): UseTemplatesReturn {
 
   const createTemplate = useCallback(async (input: {
     nom: string;
-    type: 'statique' | 'dynamique';
-    contenu: string;
-    estPublic: boolean;
-    categorie?: string;
+    description?: string;
     typeContenu?: TypeContenuQR;
     parametresParDefaut?: QRCodeDesign;
+    estPublic?: boolean;
   }) => {
     const template = await adminApi.templates.create({
       ...input,
@@ -108,12 +104,10 @@ interface UseTemplateReturn {
   refetch: () => Promise<void>;
   updateTemplate: (input: Partial<{
     nom: string;
-    type: 'statique' | 'dynamique';
-    contenu: string;
-    estPublic: boolean;
-    categorie?: string;
+    description?: string;
     typeContenu?: TypeContenuQR;
     parametresParDefaut?: QRCodeDesign;
+    estPublic?: boolean;
   }>) => Promise<ModeleQR>;
 }
 
@@ -142,12 +136,10 @@ export function useTemplate(id: string | undefined): UseTemplateReturn {
 
   const updateTemplate = useCallback(async (input: Partial<{
     nom: string;
-    type: 'statique' | 'dynamique';
-    contenu: string;
-    estPublic: boolean;
-    categorie?: string;
+    description?: string;
     typeContenu?: TypeContenuQR;
     parametresParDefaut?: QRCodeDesign;
+    estPublic?: boolean;
   }>) => {
     if (!id) throw new Error('ID de modèle manquant');
     const updated = await adminApi.templates.update(id, input);

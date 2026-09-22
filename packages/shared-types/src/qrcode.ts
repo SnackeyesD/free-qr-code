@@ -61,7 +61,7 @@ export interface QRCodeInternal {
 export interface QRCodeInput {
   type: TypeQR;
   contenu: string;
-  design?: QRCodeDesign;
+  parametres?: QRCodeDesign;
 }
 
 export interface QRCodeUpdateInput {

@@ -122,7 +122,7 @@ export default function QRDetailPage() {
             <QRPreview content={qr.contenu} design={qr.parametres} size={260} />
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            {(['png', 'svg', 'pdf'] as const).map((format) => (
+            {(['png', 'svg'] as const).map((format) => (
               <button
                 key={format}
                 type="button"

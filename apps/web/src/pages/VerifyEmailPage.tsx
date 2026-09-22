@@ -13,7 +13,7 @@ export default function VerifyEmailPage() {
       return;
     }
     api
-      .get('/auth/verify-email', { params: { token } })
+      .post('/auth/verify-email', { token })
       .then(() => setStatus('success'))
       .catch(() => setStatus('error'));
   }, [token]);

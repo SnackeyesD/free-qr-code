@@ -62,6 +62,9 @@ api.interceptors.response.use(
       }
 
       return new Promise((resolve) => {
+        // Marque _retry AVANT la mise en file : si la requête rejouée échoue
+        // encore en 401, elle est rejetée au lieu de relancer un refresh en boucle.
+        originalRequest._retry = true;
         subscribeTokenRefresh((token) => {
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${token}`;

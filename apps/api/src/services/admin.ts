@@ -9,8 +9,10 @@ export interface CampagneEmailRow {
   id: number;
   public_id: string;
   id_utilisateur: number;
+  nom: string | null;
   titre: string;
   contenu: string;
+  corps_texte: string | null;
   cible: string;
   statut: string;
   date_envoi: string | null;
@@ -64,10 +66,11 @@ function toPublicCampaign(row: CampagneEmailRow): CampagneEmail {
   return {
     id: String(row.id),
     idUtilisateur: String(row.id_utilisateur),
-    nom: row.titre ?? '',
+    nom: row.nom ?? row.titre ?? '',
     sujet: row.titre ?? '',
     contenu: row.contenu ?? '',
     corpsHtml: row.contenu ?? '',
+    corpsTexte: row.corps_texte ?? undefined,
     cible: row.cible as CibleCampagneEmail,
     statut: row.statut as CampagneEmail['statut'],
     dateEnvoi: row.date_envoi ?? undefined,
@@ -90,19 +93,53 @@ function toPublicTemplate(row: ModeleRow): ModeleQR {
   };
 }
 
-export async function listCampaigns(env: AppEnv['Bindings']): Promise<{
+export interface ListCampaignsFilters {
+  page: number;
+  limit: number;
+  statut?: CampagneEmail['statut'];
+  search?: string;
+}
+
+export async function listCampaigns(
+  env: AppEnv['Bindings'],
+  filters: ListCampaignsFilters = { page: 1, limit: 20 }
+): Promise<{
   data: CampagneEmail[];
   total: number;
 }> {
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (filters.statut) {
+    conditions.push('statut = ?');
+    params.push(filters.statut);
+  }
+  if (filters.search) {
+    conditions.push('titre LIKE ?');
+    params.push(`%${filters.search}%`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = Math.min(Math.max(filters.limit, 1), 100);
+  const offset = (Math.max(filters.page, 1) - 1) * limit;
+
   const rows = await d1All<CampagneEmailRow>(
     env,
-    `SELECT id, public_id, id_utilisateur, titre, contenu, cible, statut, date_envoi, date_creation,
+    `SELECT id, public_id, id_utilisateur, nom, titre, contenu, corps_texte, cible, statut, date_envoi, date_creation,
             nombre_ouvertures, nombre_clics
      FROM campagnes_emails
+     ${where}
      ORDER BY date_creation DESC
-     LIMIT 100`
+     LIMIT ? OFFSET ?`,
+    ...params,
+    limit,
+    offset
   );
-  const countRow = await d1First<{ total: number }>(env, `SELECT COUNT(*) AS total FROM campagnes_emails`);
+  const countRow = await d1First<{ total: number }>(
+    env,
+    `SELECT COUNT(*) AS total FROM campagnes_emails ${where}`,
+    ...params
+  );
   return {
     data: rows.map(toPublicCampaign),
     total: countRow?.total ?? 0,
@@ -133,12 +170,14 @@ export async function createCampaign(
   const now = new Date().toISOString();
   const id = await d1Insert(
     env,
-    `INSERT INTO campagnes_emails (public_id, id_utilisateur, titre, contenu, cible, statut, date_creation, nombre_ouvertures, nombre_clics)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO campagnes_emails (public_id, id_utilisateur, nom, titre, contenu, corps_texte, cible, statut, date_creation, nombre_ouvertures, nombre_clics)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     crypto.randomUUID(),
     adminId,
+    input.nom.trim(),
     input.sujet.trim(),
     input.corpsHtml,
+    input.corpsTexte ?? null,
     input.cible ?? 'tous',
     'brouillon',
     now,
@@ -149,8 +188,10 @@ export async function createCampaign(
     id,
     public_id: crypto.randomUUID(),
     id_utilisateur: adminId,
+    nom: input.nom.trim(),
     titre: input.sujet.trim(),
     contenu: input.corpsHtml,
+    corps_texte: input.corpsTexte ?? null,
     cible: input.cible ?? 'tous',
     statut: 'brouillon',
     date_envoi: null,
@@ -163,7 +204,7 @@ export async function createCampaign(
 export async function getCampaignById(env: AppEnv['Bindings'], id: number): Promise<CampagneEmail> {
   const row = await d1First<CampagneEmailRow>(
     env,
-    `SELECT id, public_id, id_utilisateur, titre, contenu, cible, statut, date_envoi, date_creation,
+    `SELECT id, public_id, id_utilisateur, nom, titre, contenu, corps_texte, cible, statut, date_envoi, date_creation,
             nombre_ouvertures, nombre_clics
      FROM campagnes_emails
      WHERE id = ?`,
@@ -187,7 +228,7 @@ export async function updateCampaign(
 ): Promise<CampagneEmail> {
   const existing = await d1First<CampagneEmailRow>(
     env,
-    `SELECT id, public_id, id_utilisateur, titre, contenu, cible, statut, date_envoi, date_creation,
+    `SELECT id, public_id, id_utilisateur, nom, titre, contenu, corps_texte, cible, statut, date_envoi, date_creation,
             nombre_ouvertures, nombre_clics
      FROM campagnes_emails
      WHERE id = ?`,
@@ -200,6 +241,10 @@ export async function updateCampaign(
 
   const sets: string[] = [];
   const params: (string | number)[] = [];
+  if (input.nom !== undefined) {
+    sets.push('nom = ?');
+    params.push(input.nom.trim());
+  }
   if (input.sujet !== undefined) {
     sets.push('titre = ?');
     params.push(input.sujet.trim());
@@ -207,6 +252,10 @@ export async function updateCampaign(
   if (input.corpsHtml !== undefined) {
     sets.push('contenu = ?');
     params.push(input.corpsHtml);
+  }
+  if (input.corpsTexte !== undefined) {
+    sets.push('corps_texte = ?');
+    params.push(input.corpsTexte);
   }
   if (input.cible !== undefined) {
     sets.push('cible = ?');
@@ -218,6 +267,23 @@ export async function updateCampaign(
     await d1Run(env, `UPDATE campagnes_emails SET ${sets.join(', ')} WHERE id = ?`, ...params);
   }
 
+  return getCampaignById(env, id);
+}
+
+export async function deleteCampaign(env: AppEnv['Bindings'], id: number): Promise<void> {
+  const existing = await getCampaignById(env, id);
+  if (existing.statut !== 'brouillon') {
+    throw new HTTPException(400, { message: 'Seule une campagne en brouillon peut être supprimée' });
+  }
+  await d1Run(env, 'DELETE FROM campagnes_emails WHERE id = ?', id);
+}
+
+export async function cancelCampaign(env: AppEnv['Bindings'], id: number): Promise<CampagneEmail> {
+  const existing = await getCampaignById(env, id);
+  if (existing.statut !== 'brouillon' && existing.statut !== 'programmee') {
+    throw new HTTPException(400, { message: 'Seule une campagne en brouillon ou programmée peut être annulée' });
+  }
+  await d1Run(env, `UPDATE campagnes_emails SET statut = 'annulee' WHERE id = ?`, id);
   return getCampaignById(env, id);
 }
 
@@ -324,7 +390,7 @@ export async function sendCampaign(
   id: number,
   scheduledAt?: Date
 ): Promise<{ sent: number; campaignId: number; status: string }> {
-  const campaign = await d1First<CampagneEmailRow>(
+  const campaign = await d1First<Pick<CampagneEmailRow, 'id' | 'id_utilisateur' | 'titre' | 'contenu' | 'cible' | 'statut'>>(
     env,
     `SELECT id, id_utilisateur, titre, contenu, cible, statut FROM campagnes_emails WHERE id = ?`,
     id
@@ -382,6 +448,21 @@ export async function sendCampaign(
   );
 
   return { sent, campaignId: id, status: 'envoyee' };
+}
+
+export async function sendDueCampaigns(env: AppEnv['Bindings']): Promise<{ campaigns: number; sent: number }> {
+  const now = new Date().toISOString();
+  const due = await d1All<{ id: number }>(
+    env,
+    `SELECT id FROM campagnes_emails WHERE statut = 'programmee' AND date_envoi IS NOT NULL AND date_envoi <= ?`,
+    now
+  );
+  let sent = 0;
+  for (const row of due) {
+    const result = await sendCampaign(env, row.id);
+    sent += result.sent;
+  }
+  return { campaigns: due.length, sent };
 }
 
 export async function sendMailStub(
@@ -454,15 +535,45 @@ export function transparent1x1Gif(): ArrayBuffer {
   return bytes.buffer;
 }
 
-export async function listTemplates(env: AppEnv['Bindings']): Promise<{ data: ModeleQR[]; total: number }> {
+export interface ListTemplatesFilters {
+  page: number;
+  limit: number;
+  search?: string;
+}
+
+export async function listTemplates(
+  env: AppEnv['Bindings'],
+  filters: ListTemplatesFilters = { page: 1, limit: 20 }
+): Promise<{ data: ModeleQR[]; total: number }> {
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (filters.search) {
+    conditions.push('(nom LIKE ? OR description LIKE ?)');
+    const like = `%${filters.search}%`;
+    params.push(like, like);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = Math.min(Math.max(filters.limit, 1), 100);
+  const offset = (Math.max(filters.page, 1) - 1) * limit;
+
   const rows = await d1All<ModeleRow>(
     env,
     `SELECT id, public_id, id_utilisateur, nom, description, type_contenu, parametres_par_defaut, est_public, date_creation
      FROM modeles
+     ${where}
      ORDER BY date_creation DESC
-     LIMIT 200`
+     LIMIT ? OFFSET ?`,
+    ...params,
+    limit,
+    offset
   );
-  const countRow = await d1First<{ total: number }>(env, `SELECT COUNT(*) AS total FROM modeles`);
+  const countRow = await d1First<{ total: number }>(
+    env,
+    `SELECT COUNT(*) AS total FROM modeles ${where}`,
+    ...params
+  );
   return { data: rows.map(toPublicTemplate), total: countRow?.total ?? 0 };
 }
 

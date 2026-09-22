@@ -3,8 +3,6 @@ import type {
   QRCodeInput,
   QRCodeUpdateInput,
   StatistiquesQRCode,
-  StatistiquesJournalieres,
-  Scan,
   PaginatedResult,
 } from '@free-qr/shared-types';
 import { api } from '@/lib/api';
@@ -14,6 +12,11 @@ export interface QRListFilters {
   limit?: number;
   search?: string;
   type?: 'statique' | 'dynamique';
+}
+
+export interface QRStatsRange {
+  from?: string;
+  to?: string;
 }
 
 export const qrApi = {
@@ -47,29 +50,19 @@ export const qrApi = {
     await api.delete(`/qrcodes/${id}`);
   },
 
-  downloadImage: async (id: string, format: 'png' | 'svg' | 'pdf' = 'png'): Promise<Blob> => {
+  downloadImage: async (id: string, format: 'png' | 'svg' = 'png'): Promise<Blob> => {
     const { data } = await api.get<Blob>(`/qrcodes/${id}/download?format=${format}`, {
       responseType: 'blob',
     });
     return data;
   },
 
-  stats: async (id: string, period: string = '7j'): Promise<StatistiquesQRCode> => {
-    const { data } = await api.get<StatistiquesQRCode>(`/qrcodes/${id}/stats?periode=${period}`);
-    return data;
-  },
-
-  dailyStats: async (id: string, start?: string, end?: string): Promise<StatistiquesJournalieres[]> => {
+  stats: async (id: string, range: QRStatsRange = {}): Promise<StatistiquesQRCode> => {
     const params = new URLSearchParams();
-    if (start) params.set('start', start);
-    if (end) params.set('end', end);
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const { data } = await api.get<StatistiquesJournalieres[]>(`/qrcodes/${id}/stats/daily${query}`);
-    return data;
-  },
-
-  recentScans: async (id: string, limit: number = 20): Promise<Scan[]> => {
-    const { data } = await api.get<Scan[]>(`/qrcodes/${id}/scans?limit=${limit}`);
+    const { data } = await api.get<StatistiquesQRCode>(`/qrcodes/${id}/stats${query}`);
     return data;
   },
 };

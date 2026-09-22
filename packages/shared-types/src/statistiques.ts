@@ -24,11 +24,18 @@ export interface ScanInternal {
   estUnique: boolean;
 }
 
+export interface EvolutionPoint {
+  date: string;
+  scans: number;
+  scansUniques: number;
+}
+
 export interface StatistiquesQRCode {
   idQrCode: PublicId;
-  periode: string;
+  periode: string | { from?: string; to?: string };
   totalScans: number;
   scansUniques: number;
+  evolution?: EvolutionPoint[];
   pays: Record<string, number>;
   appareils: Record<string, number>;
 }

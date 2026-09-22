@@ -28,7 +28,7 @@ export const createQRCodeSchema = z.object({
   type: z.enum(['statique', 'dynamique']),
   contenu: z.string().min(1).max(4096),
   typeContenu: z.enum(typeContenuValues).optional(),
-  design: designSchema.optional(),
+  parametres: designSchema.optional(),
 });
 
 export const updateQRCodeSchema = z.object({

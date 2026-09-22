@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { AppEnv } from '../types/index.js';
 
 export function getCorsOrigin(env: AppEnv['Bindings'], reqOrigin?: string | null): string | null {
-  const allowed = env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+  const allowed = (env.CORS_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean);
   if (!reqOrigin) return null;
   if (allowed.includes('*') || allowed.includes(reqOrigin)) return reqOrigin;
   if (reqOrigin.startsWith('http://localhost:')) {

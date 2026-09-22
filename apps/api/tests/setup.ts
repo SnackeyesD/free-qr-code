@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import app from '../src/index.js';
+import { app } from '../src/index.js';
 import { resetRateLimitBuckets } from '../src/middlewares/rate-limit.js';
 import type { AppEnv } from '../src/types/index.js';
 import type { D1Database, D1PreparedStatement, D1Result, D1ExecResult } from '@cloudflare/workers-types';
@@ -21,7 +21,7 @@ const baseEnv: Omit<AppEnv['Bindings'], 'DB'> = {
   RATE_LIMIT_MAX_REQUESTS: '100',
 };
 
-const schemaPath = path.resolve(__dirname, '../migrations/001_initial_schema.sql');
+const migrationsDir = path.resolve(__dirname, '../migrations');
 
 function normalizeBindValue(value: unknown): unknown {
   if (typeof value === 'boolean') return value ? 1 : 0;
@@ -179,8 +179,14 @@ export function createTestEnv(): TestContext {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
-  const schema = fs.readFileSync(schemaPath, 'utf-8');
-  db.exec(schema);
+  // Applique toutes les migrations dans l'ordre (comme wrangler avec migrations_dir).
+  const migrationFiles = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  for (const file of migrationFiles) {
+    db.exec(fs.readFileSync(path.join(migrationsDir, file), 'utf-8'));
+  }
 
   const d1 = createD1Database(db);
 
@@ -222,6 +228,30 @@ export async function createVerifiedUser(
   );
   const result = await stmt
     .bind(publicId, email.toLowerCase().trim(), hashed, nom.trim(), 1, 0, null, now, 1, 'utilisateur')
+    .run();
+  const id = result.meta?.last_row_id ?? userCounter;
+  return { id: String(id), publicId, email: email.toLowerCase().trim(), nom: nom.trim() };
+}
+
+export async function createAdminUser(
+  env: AppEnv['Bindings'],
+  email: string,
+  password: string,
+  nom: string
+): Promise<{ id: string; publicId: string; email: string; nom: string }> {
+  userCounter++;
+  const bcrypt = await import('bcryptjs');
+  const now = new Date().toISOString();
+  const publicId = crypto.randomUUID();
+  const hashed = await bcrypt.hash(password, 10);
+  const stmt = env.DB.prepare(
+    `INSERT INTO utilisateurs (
+      public_id, email, mot_de_passe, nom, est_verifie, consentement_marketing,
+      date_consentement_marketing, date_inscription, est_actif, role
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const result = await stmt
+    .bind(publicId, email.toLowerCase().trim(), hashed, nom.trim(), 1, 0, null, now, 1, 'admin')
     .run();
   const id = result.meta?.last_row_id ?? userCounter;
   return { id: String(id), publicId, email: email.toLowerCase().trim(), nom: nom.trim() };
