@@ -4,8 +4,16 @@ compatibility_date = "2025-03-01"
 
 [vars]
 JWT_TRACKING_SECRET = "dev-tracking-secret-change-me"
-SMTP_FROM = "noreply@free-qrcode.app"
+SMTP_FROM = "contact-free-qr-code@getcongo.com"
 compatibility_flags = ["nodejs_compat"]
+API_BASE_URL=http://localhost:8787
+CORS_ORIGINS=http://localhost:5173
+ACCESS_TOKEN_TTL_SECONDS=900
+REFRESH_TOKEN_TTL_DAYS=7
+RATE_LIMIT_WINDOW_SECONDS=60
+RATE_LIMIT_MAX_REQUESTS=100
+FRONTEND_URL=http://localhost:5173
+EMAIL_WORKER_URL=http://localhost:8788
 
 [[r2_buckets]]
 binding = "QR_IMAGES"
