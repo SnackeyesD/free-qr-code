@@ -171,7 +171,7 @@ Shipped and running — next iterations:
 **SAYI Gloire** — Full-Stack Software Engineer (React · Node.js · TypeScript) · Telecom VAS & Mobile Money (ex-Huawei)
 
 - GitHub: [@SnackeyesD](https://github.com/SnackeyesD)
-- LinkedIn: *add your URL here*
+- LinkedIn: [gloire-sayi](https://www.linkedin.com/in/gloire-sayi-082437349)
 - Email: messiasayi@gmail.com
 - Open to remote opportunities 🌍
 
