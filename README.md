@@ -1,231 +1,180 @@
-# Free QR Code — Monorepo SaaS de génération & suivi de QR codes
+# Free QR Code — SaaS Platform
 
-Application SaaS française de création, gestion et tracking de QR codes (statiques & dynamiques). Monorepo géré avec pnpm workspaces.
+> A full-stack SaaS for creating, customizing and **tracking** QR codes (static & dynamic) — built as a production-grade monorepo, fully deployed on Cloudflare's edge.
+
+<p align="left">
+  <a href="https://free-qr-code-saas.getcongo.com/"><img src="https://img.shields.io/badge/🔗_Live_Demo-free--qr--code--saas.getcongo.com-06b6d4" alt="Live demo"></a>
+  <a href="https://free-qr-api.messiasayi.workers.dev/"><img src="https://img.shields.io/badge/API-Workers.dev-ff6c37" alt="API"></a>
+  <img src="https://img.shields.io/badge/React_19-TypeScript-61dafb?logo=react" alt="React TypeScript">
+  <img src="https://img.shields.io/badge/Hono-Cloudflare_Workers-f38020?logo=cloudflare" alt="Hono Cloudflare">
+  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb" alt="MongoDB">
+  <img src="https://img.shields.io/badge/pnpm-workspaces-f69220?logo=pnpm" alt="pnpm">
+</p>
+
+**Live demo:** [free-qr-code-saas.getcongo.com](https://free-qr-code-saas.getcongo.com/) · **API:** [free-qr-api.messiasayi.workers.dev](https://free-qr-api.messiasayi.workers.dev/) · Interface: 🇫🇷 French market
 
 ---
 
-## Stack
+## ✨ Features
 
-| Couche | Technologie |
-|--------|-------------|
-| API | [Hono](https://hono.dev/) + [Cloudflare Workers](https://workers.cloudflare.com/) |
-| Frontend | [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/) |
-| Base de données | [MongoDB](https://www.mongodb.com/) via `mongodb` driver |
-| Stockage images | Cloudflare R2 (`QR_IMAGES`) |
-| Authentification | JWT access + refresh, cookies HttpOnly |
-| Types partagés | Package interne `@free-qr/shared-types` |
+- **Static & dynamic QR codes** — create, edit (destination, design, parameters) and delete
+- **Scan analytics** — per-QR statistics, redirect endpoint with scan tracking + IP anonymization (RGPD-friendly)
+- **Full auth system** — JWT access + refresh tokens, HttpOnly cookies, multi-session management & revocation, bcrypt hashing
+- **Admin area** — email campaigns (pixel-open & click tracking), QR templates library
+- **Edge-native** — API runs on Cloudflare Workers (V8 isolate, global latency), images on R2, D1-ready
+- **Shared types** — end-to-end type safety between API and web via an internal `@free-qr/shared-types` workspace package
+- **Validation everywhere** — Zod schemas shared across client & server
+- **Rate limiting, security headers, CORS** — production hardening out of the box
+
+## 📸 Screenshots
+
+<!-- TODO: add screenshots to docs/screenshots/ -->
+<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
+<!-- ![QR editor](docs/screenshots/editor.png) -->
+
+> Landing page → [free-qr-code-saas.getcongo.com](https://free-qr-code-saas.getcongo.com/) · Register → [/register](https://free-qr-code-saas.getcongo.com/register)
+
+## 🏗 Architecture
+
+```
+Browser (React 19 + Vite + Tailwind + React Query)
+        │  HTTPS / JSON  (Bearer JWT or HttpOnly cookie)
+        ▼
+Cloudflare Worker (Hono) ── edge middlewares: rate-limit, CORS, auth, validation (Zod)
+        │
+        ├── MongoDB Atlas      (users, qrcodes, scans, campaigns, templates, sessions)
+        └── Cloudflare R2      (generated QR images)
+        └── short links        /q/:alias → 302 redirect + scan event (IP anonymized)
+```
+
+Monorepo managed with **pnpm workspaces** — API, web app and shared types versioned together.
+
+## 🧱 Stack
+
+| Layer | Technology |
+|---|---|
+| API | [Hono](https://hono.dev/) on [Cloudflare Workers](https://workers.cloudflare.com/) (TypeScript) |
+| Frontend | React 19 + TypeScript + Vite 6 + Tailwind CSS 3 + react-router 7 |
+| Database | Cloudflare D1 (SQLite) with migrations |
+| Storage | Cloudflare R2 (`QR_IMAGES` bucket) |
+| QR generation | `qrcode` (node-qrcode) |
+| Auth | JWT via jose, bcryptjs, HttpOnly cookies, multi-session |
+| Shared types | Internal workspace package `@free-qr/shared-types` (Zod-compatible) |
 | Validation | [Zod](https://zod.dev/) |
 
----
-
-## Structure du monorepo
+## 📁 Monorepo structure
 
 ```text
 free-qr-code/
 ├── apps/
 │   ├── api/               # Backend Hono (Cloudflare Worker)
 │   │   ├── src/
-│   │   │   ├── index.ts             # Point d'entrée + montage des routes
-│   │   │   ├── routes/              # Routes Hono
-│   │   │   │   ├── auth.ts          # /auth/* (register, login, refresh, logout, sessions, verify-email)
-│   │   │   │   ├── user.ts          # /users/me, /users/health
-│   │   │   │   ├── qrcode.ts        # /qrcodes/* (CRUD + list paginée)
-│   │   │   │   ├── stats.ts         # /qrcodes/:id/stats
-│   │   │   │   ├── admin.ts         # /admin/* (campagnes, templates), /tracking/*
-│   │   │   │   └── redirect.ts      # /q/:aliasCourt (redirection + scan)
-│   │   │   ├── services/            # Logique métier
-│   │   │   ├── validators/          # Schémas Zod
-│   │   │   ├── middlewares/         # Rate limiting, helpers communs
-│   │   │   ├── lib/                 # DB, R2, générateur QR
-│   │   │   └── types/               # Types internes
-│   │   └── wrangler.toml            # Config Cloudflare Worker
+│   │   │   ├── index.ts             # Entry point, route mounting
+│   │   │   ├── routes/              # auth, user, qrcode, stats, admin, tracking, redirect
+│   │   │   ├── services/            # Business logic
+│   │   │   ├── validators/          # Zod schemas
+│   │   │   ├── middlewares/         # Rate limiting, helpers
+│   │   │   ├── lib/                 # d1.ts, db.ts, r2.ts, qr-generator.ts
+│   │   │   └── types/
+│   │   └── wrangler.toml            # Cloudflare Worker config
 │   └── web/               # Frontend React + Vite
 │       ├── src/
-│       │   ├── App.tsx              # Router principal
-│       │   ├── lib/                 # Clients API (api.ts, qrApi.ts, adminApi.ts)
+│       │   ├── App.tsx              # Router
+│       │   ├── lib/                 # API clients (api.ts, qrApi.ts, adminApi.ts)
 │       │   ├── contexts/            # AuthContext
 │       │   ├── hooks/               # React Query hooks
-│       │   ├── pages/               # Pages fonctionnelles & placeholders
+│       │   ├── pages/
 │       │   └── layouts/             # DashboardLayout
-│       ├── package.json
-│       └── vite.config.ts
 ├── packages/
-│   └── shared-types/      # Types/Interfaces Zod-compatible
-│       └── src/
-│           ├── index.ts, api.ts, utilisateur.ts, qrcode.ts,
-│           ├── statistiques.ts, campagne-email.ts, modele.ts,
-│           ├── cle-api.ts, journal-et-tokens.ts
+│   └── shared-types/      # Shared Zod-compatible types (api, user, qrcode, stats…)
 ├── scripts/
-│   └── init-db.js         # Initialisation MongoDB (collections, index, users seed)
-├── merise/                # Documentation MERISE + UML
-│   ├── 01_MCD.md          # Modèle Conceptuel de Données
-│   ├── 02_MLD.md          # Modèle Logique de Données
-│   ├── 03_MPD.md          # Modèle Physique de Données
-│   ├── 04_MCT.md          # Modèle des Traitements
-│   ├── 05_MOT.md          # Modèle Opérationnel des Traitements
-│   ├── 05_REGLES_GESTION.md
-│   ├── 06_DFD.md
-│   ├── 07_DDC.md
-│   ├── 07_UML_FRONTEND_WIREFRAMES.md
-│   ├── 08_UML_FRONTEND_SEQUENCES.md
-│   ├── 09_UML_FRONTEND_NAVIGATION.md
-│   ├── 10_ARCHITECTURE.md
-│   ├── 11_API_OPENAPI.yaml
-│   ├── 12_SECURITE_RGPD.md
-│   └── 13_PLAN_TESTS.md
-├── package.json           # Scripts racine + workspace pnpm
-├── pnpm-workspace.yaml
-└── README.md              # Ce fichier
+│   └── init-db.js         # MongoDB init (collections, indexes, seed users)
+├── merise/                # Full design documentation (see below)
+├── package.json           # Root scripts + pnpm workspace
+└── pnpm-workspace.yaml
 ```
 
----
+## 🚀 Getting started
 
-## Commandes clés
-
-> Prérequis : [pnpm](https://pnpm.io/) installé, accès MongoDB, variables d'environnement renseignées.
+> Prerequisites: [pnpm](https://pnpm.io/) and [Wrangler](https://developers.cloudflare.com/workers/wrangler/) (Cloudflare account for D1/R2).
 
 ```bash
-# Installer toutes les dépendances
-pnpm install
+pnpm install                # install all workspace dependencies
 
-# Développement
-pnpm dev                 # Lance les watchers API + Web (si configuré dans package.json)
-# ou séparément :
-pnpm --filter @free-qr/api dev
-pnpm --filter @free-qr/web dev
+pnpm --filter @free-qr/api dev    # API dev server (wrangler)
+pnpm --filter @free-qr/web dev    # web dev server (vite)
 
-# Build
-pnpm build
-pnpm --filter @free-qr/api build
-pnpm --filter @free-qr/web build
+pnpm build                        # build everything
+pnpm test                         # run tests
 
-# Tests
-pnpm test
-
-# Initialisation de la base de données (MongoDB)
-node scripts/init-db.js
+node scripts/init-db.js          # initialize database + seed
 ```
 
----
+### Environment variables — API (`apps/api/wrangler.toml` / Cloudflare secrets)
 
-## Variables d'environnement
+| Variable | Description |
+|---|---|
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` / `JWT_TRACKING_SECRET` | JWT secrets |
+| `API_BASE_URL` | Public API URL |
+| `CORS_ORIGINS` | Allowed origins |
+| `ACCESS_TOKEN_TTL_SECONDS` / `REFRESH_TOKEN_TTL_DAYS` | Token TTLs |
+| `RATE_LIMIT_WINDOW_SECONDS` / `RATE_LIMIT_MAX_REQUESTS` | Rate limiting |
+| `SMTP_API_URL` / `SMTP_FROM` | Transactional email (optional) |
 
-### API (`apps/api/wrangler.toml` / secrets Cloudflare)
+Provision Cloudflare resources once (`wrangler d1 create`, `wrangler r2 bucket create`), then set secrets with `wrangler secret put` (JWT secrets, etc.).
 
-| Variable | Description | Exemple |
-|----------|-------------|---------|
-| `MONGODB_URI` | URI de connexion MongoDB | `mongodb+srv://...` |
-| `JWT_ACCESS_SECRET` | Secret JWT access | `[REDACTED]` |
-| `JWT_REFRESH_SECRET` | Secret JWT refresh | `[REDACTED]` |
-| `JWT_REFRESH_SALT` | Salt optionnel refresh | `[REDACTED]` |
-| `JWT_TRACKING_SECRET` | Secret JWT tracking email | `[REDACTED]` |
-| `API_BASE_URL` | URL publique de l'API | `https://api.free-qrcode.app` |
-| `CORS_ORIGINS` | Origines CORS autorisées | `https://app.free-qrcode.app,http://localhost:5173` |
-| `ACCESS_TOKEN_TTL_SECONDS` | TTL token access | `900` |
-| `REFRESH_TOKEN_TTL_DAYS` | TTL refresh token | `7` |
-| `RATE_LIMIT_WINDOW_SECONDS` | Fenêtre rate limit | `60` |
-| `RATE_LIMIT_MAX_REQUESTS` | Requêtes max par fenêtre | `100` |
-| `SMTP_API_URL` | URL API d'envoi d'emails (optionnel) | `[REDACTED]` |
-| `SMTP_FROM` | Adresse expéditeur | `noreply@free-qrcode.app` |
+### Environment variables — Web (`apps/web/.env`)
 
-### Web (`apps/web/.env`)
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | API base URL used by the frontend |
 
-| Variable | Description | Exemple |
-|----------|-------------|---------|
-| `VITE_API_URL` | URL de l'API (frontend) | `http://localhost:8787` |
+## 🔌 API surface
 
----
+25+ endpoints, all validated with Zod:
 
-## Routes API implémentées
+| Route | Method | Description | Auth |
+|---|---|---|---|
+| `/auth/register` `/auth/login` `/auth/refresh` | `POST` | Signup / login / token refresh | ❌ |
+| `/auth/logout` `/auth/sessions` | `GET/POST/DELETE` | Logout, list & revoke sessions | ✅ |
+| `/users/me` `/users/health` | `GET` | Profile / healthcheck | ✅/❌ |
+| `/qrcodes` | `GET/POST` | Paginated list / create | ✅ |
+| `/qrcodes/:id` | `GET/PATCH/DELETE` | Read / update / delete | ✅ |
+| `/qrcodes/:id/stats` | `GET` | Scan statistics | ✅ |
+| `/admin/campaigns` `/admin/templates` | CRUD + `/send` | Email campaigns, QR templates | ✅ admin |
+| `/tracking/pixel` `/tracking/click` | `GET` | Email open/click tracking | ❌ |
+| `/q/:shortAlias` | `GET` | Public short link → 302 + scan event | ❌ |
 
-| Route | Méthode | Description | Auth |
-|-------|---------|-------------|------|
-| `/auth/register` | `POST` | Inscription | ❌ |
-| `/auth/login` | `POST` | Connexion | ❌ |
-| `/auth/refresh` | `POST` | Rafraîchissement token | ❌ |
-| `/auth/logout` | `POST` | Déconnexion | ✅ |
-| `/auth/sessions` | `GET` | Liste des sessions actives | ✅ |
-| `/auth/sessions/:tokenHash` | `DELETE` | Révoquer une session | ✅ |
-| `/auth/verify-email` | `GET` | Vérification email | ❌ (placeholder) |
-| `/users/me` | `GET` | Profil utilisateur connecté | ✅ |
-| `/users/health` | `GET` | Healthcheck | ❌ |
-| `/qrcodes` | `GET` | Liste paginée des QR codes | ✅ |
-| `/qrcodes` | `POST` | Créer un QR code | ✅ |
-| `/qrcodes/:id` | `GET` | Détails d'un QR code | ✅ |
-| `/qrcodes/:id` | `PATCH` | Modifier un QR code | ✅ |
-| `/qrcodes/:id` | `DELETE` | Supprimer un QR code | ✅ |
-| `/qrcodes/:id/stats` | `GET` | Statistiques d'un QR code | ✅ |
-| `/admin/campaigns` | `GET/POST` | Campagnes email (admin) | ✅ admin |
-| `/admin/campaigns/:id` | `GET/PATCH` | Détail/maj campagne | ✅ admin |
-| `/admin/campaigns/:id/send` | `POST` | Envoyer une campagne | ✅ admin |
-| `/admin/templates` | `GET/POST` | Modèles QR (admin) | ✅ admin |
-| `/admin/templates/:id` | `GET/PATCH/DELETE` | Détail/maj/suppression modèle | ✅ admin |
-| `/tracking/pixel` | `GET` | Pixel d'ouverture email | ❌ |
-| `/tracking/click` | `GET` | Tracking clic email | ❌ |
-| `/q/:aliasCourt` | `GET` | Redirection & scan | ❌ |
+## 📐 Design documentation (MERISE + UML + OpenAPI)
 
----
+The `merise/` folder contains the full software design lifecycle — MCD → MLD → MPD, business rules, DFD, UML navigation/sequence diagrams, architecture, OpenAPI contract, security & RGPD analysis, and a test plan. A sample of the discipline applied to this project:
 
-## Documentation MERISE
+- [`merise/01_MCD.md`](./merise/01_MCD.md) — conceptual data model (10 entities)
+- [`merise/10_ARCHITECTURE.md`](./merise/10_ARCHITECTURE.md) — technical architecture
+- [`merise/11_API_OPENAPI.yaml`](./merise/11_API_OPENAPI.yaml) — API contract
+- [`merise/12_SECURITE_RGPD.md`](./merise/12_SECURITE_RGPD.md) — security & privacy analysis
+- [`merise/13_PLAN_TESTS.md`](./merise/13_PLAN_TESTS.md) — test plan
 
-La documentation d'architecture et de conception est disponible dans le dossier [`merise/`](./merise) :
+## 🗺 Roadmap
 
-- [MCD](./merise/01_MCD.md) — Entités : Utilisateur, QRCode, Scan, ModeleQR, CampagneEmail, CampagneUtilisateur, TrackingEmail, CleApi, JournalQRCode, TokenEmail.
-- [MLD](./merise/02_MLD.md) — Relations et cardinalités.
-- [MPD](./merise/03_MPD.md) — Implémentation MongoDB (collections, champs, index).
-- [MCT / MOT](./merise/04_MCT.md) — Traitements CRUD, authentification, statistiques.
-- [Architecture](./merise/10_ARCHITECTURE.md) — Vue technique complète.
-- [OpenAPI](./merise/11_API_OPENAPI.yaml) — Contrat d'API.
-- [Navigation frontend](./merise/09_UML_FRONTEND_NAVIGATION.md)
-- [Sécurité & RGPD](./merise/12_SECURITE_RGPD.md)
-- [Plan de tests](./merise/13_PLAN_TESTS.md)
+Shipped and running — next iterations:
 
----
+- [ ] Email verification & password reset flows (collections + tokens already provisioned)
+- [ ] Public API keys management (`/api-keys` — types already defined)
+- [ ] QR audit log exposure (`journaux_qrcodes` collection provisioned)
+- [ ] Billing page
+- [ ] Align `design` / `parametres` naming across API schemas
 
-## Points d'attention / écarts constatés
+## 👤 Author
 
-Lors de la vérification de cohérence globale, les écarts principaux suivants ont été identifiés entre la MERISE, l'API et le frontend :
+**SAYI Gloire** — Full-Stack Software Engineer (React · Node.js · TypeScript) · Telecom VAS & Mobile Money (ex-Huawei)
 
-### 1. Endpoints documentés mais non (ou partiellement) implémentés
+- GitHub: [@SnackeyesD](https://github.com/SnackeyesD)
+- LinkedIn: *add your URL here*
+- Email: messiasayi@gmail.com
+- Open to remote opportunities 🌍
 
-- **Vérification d'email** : `GET /auth/verify-email` existe mais renvoie `501 Not Implemented` (placeholder).
-- **Clés API** : le MCD/MLD/MPD prévoit `CleApi`, `shared-types` définit les types, mais il n'y a **aucune route** `/api-keys` dans l'API.
-- **Journal d'audit QR** : la collection `journaux_qrcodes` est référencée dans `init-db.js` et `getCollections`, mais aucun service ni endpoint n'expose ce journal.
-- **Tokens email** : collection `tokens_email` initialisée, mais aucune route ne gère les tokens de vérification / reset.
+## 📄 License
 
-### 2. Routes frontend sans backend correspondant
-
-- `ApiKeysPage.tsx`, `SettingsPage.tsx`, `SessionsPage.tsx` sont des **placeholders vides** (`// TODO`).
-- Le hook `useUsers.ts` consomme `/admin/users`, **route inexistante** dans `admin.ts`.
-- Plusieurs pages du plan de navigation (wireframes) n'ont pas encore de page React (`BillingPage`, etc.).
-
-### 3. Divergences de noms / types
-
-- Le MCD parle de `ModeleQR` ; l'API utilise `admin/templates` → cohérent fonctionnellement mais nom différent.
-- Le schéma `updateQRCodeSchema` accepte `parametres` alors que le schéma de création accepte `design`. Les deux correspondent à `QRCodeDesign` mais avec des noms différents (inconsistance API).
-- La route `GET /qrcodes/:id` retourne `parametres`, pas `design`.
-
-### 4. Champs présents dans shared-types mais non pleinement exploités
-
-- `ApiKey` / `CleApi` : types définis, pas de CRUD backend.
-- `JournalQRCode` : type défini, pas d'exploitation.
-- `TokenEmail` : type défini, pas d'exploitation.
-
-### 5. Sécurité / RGPD
-
-- Le plan de sécurité mentionne un rate limit avancé et anonymisation IP (faite dans `scan.ts` → ✅).
-- Pas de route `/auth/forgot-password` ni `/auth/reset-password` alors que le plan de tests les mentionne indirectement via les tokens email.
-
----
-
-## Notes
-
-- Le frontend React Query consomme l'API via `api.ts`, `qrApi.ts`, `adminApi.ts` en utilisant `import.meta.env.VITE_API_URL`.
-- L'API supporte à la fois l'authentification par header `Authorization: Bearer <token>` et par cookie `accessToken`.
-- Le worker est conçu pour Cloudflare Workers ; `wrangler.toml` doit être complété par les secrets Cloudflare (`wrangler secret put`).
-
----
-
-## Licence
-
-Projet privé — tous droits réservés.
+Proprietary — all rights reserved. Demo code shared for portfolio purposes.
