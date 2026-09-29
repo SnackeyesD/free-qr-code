@@ -13,6 +13,7 @@ import { adminRoutes, trackingRoutes } from "./routes/admin.js";
 import { adminDashboardRoutes, dashboardRoutes } from "./routes/dashboard.js";
 import { apiKeyRoutes } from "./routes/api-keys.js";
 import { logRoutes } from "./routes/logs.js";
+import { previewRoutes } from "./routes/preview.js";
 import type { AppEnv } from "./types/index.js";
 import r2Routes from "./routes/r2.js";
 
@@ -37,6 +38,7 @@ app.route("/admin/dashboard", adminDashboardRoutes);
 app.route("/tracking", trackingRoutes);
 app.route("/api-keys", apiKeyRoutes);
 app.route("/logs", logRoutes);
+app.route("/preview", previewRoutes);
 app.route("/dashboard", dashboardRoutes);
 
 export default app;

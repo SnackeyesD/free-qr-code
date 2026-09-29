@@ -56,7 +56,22 @@ export const downloadQRCodeSchema = z.object({
   format: z.enum(["png", "svg", "pdf"]).default("png"),
 });
 
+export const previewQrSchema = z.object({
+  content: z.string().min(1).max(4096),
+  couleur: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  background: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  size: z.coerce.number().int().min(64).max(600).default(400),
+  correction: z.enum(["L", "M", "Q", "H"]).default("M"),
+});
+
 export type CreateQRCodeInput = z.infer<typeof createQRCodeSchema>;
 export type UpdateQRCodeInput = z.infer<typeof updateQRCodeSchema>;
 export type ListQRCodeInput = z.infer<typeof listQRCodesSchema>;
 export type DownloadQRCodeInput = z.infer<typeof downloadQRCodeSchema>;
+export type PreviewQrInput = z.infer<typeof previewQrSchema>;

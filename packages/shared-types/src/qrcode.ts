@@ -22,7 +22,7 @@ export interface QRCodeDesign {
   taille?: number;
   correction?: "L" | "M" | "Q" | "H";
   cadre?: boolean;
-  formatImage?: "png" | "svg";
+  formatImage?: "png" | "svg" | "pdf";
   [key: string]: unknown;
 }
 
