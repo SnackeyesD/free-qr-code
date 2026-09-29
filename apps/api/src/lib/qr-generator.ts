@@ -1,4 +1,4 @@
-import { toBuffer, toString } from "qrcode";
+import { toString } from "qrcode";
 import type { QRCodeDesign } from "@free-qr/shared-types";
 import { Resvg } from "@cf-wasm/resvg/workerd";
 import { PDFDocument } from "pdf-lib";
@@ -7,6 +7,13 @@ export interface GeneratedImage {
   buffer: ArrayBuffer;
   mimeType: string;
   extension: string;
+}
+
+function toExactArrayBuffer(view: Uint8Array): ArrayBuffer {
+  return view.buffer.slice(
+    view.byteOffset,
+    view.byteOffset + view.byteLength,
+  ) as ArrayBuffer;
 }
 
 async function pngToPdf(
@@ -28,6 +35,8 @@ async function svgToPng(svgString: string, width: number): Promise<Uint8Array> {
   return rendered.asPng();
 }
 
+const QUIET_ZONE_MIN = 4;
+
 export async function generateQRCodeImage(
   content: string,
   design: QRCodeDesign = {},
@@ -38,7 +47,7 @@ export async function generateQRCodeImage(
     dark: design.couleur || "#000000",
     light: design.background || "#FFFFFF",
   };
-  const margin = design.cadre === false ? 0 : 2;
+  const margin = design.cadre === false ? QUIET_ZONE_MIN : QUIET_ZONE_MIN + 2;
   const errorCorrectionLevel = design.correction || "M";
 
   const svgString = await toString(content, {
@@ -58,7 +67,7 @@ export async function generateQRCodeImage(
 
   if (formatImage === "png") {
     return {
-      buffer: pngBytes.buffer as ArrayBuffer,
+      buffer: toExactArrayBuffer(pngBytes),
       mimeType: "image/png",
       extension: "png",
     };
@@ -67,7 +76,7 @@ export async function generateQRCodeImage(
   if (formatImage === "pdf") {
     const pdfBytes = await pngToPdf(pngBytes, width);
     return {
-      buffer: pdfBytes.buffer as ArrayBuffer,
+      buffer: toExactArrayBuffer(pdfBytes),
       mimeType: "application/pdf",
       extension: "pdf",
     };
