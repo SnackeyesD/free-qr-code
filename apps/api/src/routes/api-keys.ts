@@ -23,7 +23,9 @@ const permissionSchema = z.enum([
 const createApiKeySchema = z.object({
   nom: z.string().min(1).max(100).transform((v) => v.trim()),
   permissions: z.array(permissionSchema).optional(),
-  dateExpiration: z.string().datetime().optional(),
+  // Accepte ISO complet comme `datetime-local` ("2026-12-31T23:59") ;
+  // la validité + le futur sont vérifiés dans le service.
+  dateExpiration: z.string().min(1).optional(),
 });
 
 apiKeyRoutes.get('/', async (c) => {
@@ -45,8 +47,8 @@ apiKeyRoutes.post('/', zValidator('json', createApiKeySchema), async (c) => {
 
 apiKeyRoutes.get('/:id', async (c) => {
   const userId = Number(c.get('userId'));
-  const id = Number(c.req.param('id'));
-  if (Number.isNaN(id)) {
+  const id = c.req.param('id');
+  if (!id) {
     throw new HTTPException(400, { message: 'Invalid API key id' });
   }
   const key = await getApiKeyById(c.env, userId, id);
@@ -58,8 +60,8 @@ apiKeyRoutes.get('/:id', async (c) => {
 
 apiKeyRoutes.delete('/:id', async (c) => {
   const userId = Number(c.get('userId'));
-  const id = Number(c.req.param('id'));
-  if (Number.isNaN(id)) {
+  const id = c.req.param('id');
+  if (!id) {
     throw new HTTPException(400, { message: 'Invalid API key id' });
   }
   const revoked = await revokeApiKey(c.env, userId, id);

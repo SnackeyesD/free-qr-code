@@ -157,7 +157,10 @@ export default function ApiKeysPage() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Clés API</h2>
           <p className="mt-2 text-gray-600">
-            Gérez vos clés d'accès pour l'API Free QR. Gardez vos clés secrètes.
+            Gérez vos clés d'accès pour l'API Free QR. Passez la clé dans le
+            header <code className="font-mono">X-API-Key</code> (ou
+            <code className="font-mono"> Authorization: ApiKey &lt;clé&gt;</code>).
+            Gardez vos clés secrètes.
           </p>
         </div>
         <button
@@ -258,8 +261,7 @@ export default function ApiKeysPage() {
                 </div>
                 {selectedPermissions.length === 0 && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Aucune permission sélectionnée = clé en lecture seule côté API selon la
-                    validation backend.
+                    Sans permission, la clé ne pourra appeler aucune route.
                   </p>
                 )}
               </div>

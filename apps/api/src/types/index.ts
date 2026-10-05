@@ -42,6 +42,8 @@ export interface AppEnv {
     role?: string;
     jti?: string;
     requestId?: string;
+    permissions?: string[] | null;
+    authType?: "jwt" | "apikey";
   };
 }
 

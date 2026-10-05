@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { authMiddleware } from "../services/auth.js";
 import { rateLimitMiddleware } from "../middlewares/rate-limit.js";
+import { requirePermission } from "../middlewares/api-key-auth.js";
 import {
   createQRCode,
   listQRCodes,
@@ -24,12 +24,15 @@ qrCodeRoutes.use(
   "*",
   rateLimitMiddleware as unknown as import("hono").MiddlewareHandler<AppEnv>,
 );
-qrCodeRoutes.use(
-  "*",
-  authMiddleware as unknown as import("hono").MiddlewareHandler<AppEnv>,
-);
 
-qrCodeRoutes.get("/", zValidator("query", listQRCodesSchema), async (c) => {
+type AppMiddleware = import("hono").MiddlewareHandler<AppEnv>;
+
+const canRead = requirePermission("qrcodes:read") as unknown as AppMiddleware;
+const canCreate = requirePermission("qrcodes:create") as unknown as AppMiddleware;
+const canUpdate = requirePermission("qrcodes:update") as unknown as AppMiddleware;
+const canDelete = requirePermission("qrcodes:delete") as unknown as AppMiddleware;
+
+qrCodeRoutes.get("/", canRead, zValidator("query", listQRCodesSchema), async (c) => {
   const userId = c.get("userId") as string;
 
   const query = c.req.valid("query");
@@ -37,14 +40,14 @@ qrCodeRoutes.get("/", zValidator("query", listQRCodesSchema), async (c) => {
   return c.json(result);
 });
 
-qrCodeRoutes.post("/", zValidator("json", createQRCodeSchema), async (c) => {
+qrCodeRoutes.post("/", canCreate, zValidator("json", createQRCodeSchema), async (c) => {
   const userId = c.get("userId") as string;
   const input = c.req.valid("json");
   const qr = await createQRCode(c.env, userId, input);
   return c.json(qr, 201);
 });
 
-qrCodeRoutes.get("/:id", async (c) => {
+qrCodeRoutes.get("/:id", canRead, async (c) => {
   const userId = c.get("userId") as string;
   const id = c.req.param("id");
   const qr = await getQRCodeById(c.env, userId, id);
@@ -53,6 +56,7 @@ qrCodeRoutes.get("/:id", async (c) => {
 
 qrCodeRoutes.patch(
   "/:id",
+  canUpdate,
   zValidator("json", updateQRCodeSchema),
   async (c) => {
     const userId = c.get("userId") as string;
@@ -63,7 +67,7 @@ qrCodeRoutes.patch(
   },
 );
 
-qrCodeRoutes.delete("/:id", async (c) => {
+qrCodeRoutes.delete("/:id", canDelete, async (c) => {
   const userId = c.get("userId") as string;
   const id = c.req.param("id");
   await deleteQRCode(c.env, userId, id);
@@ -72,6 +76,7 @@ qrCodeRoutes.delete("/:id", async (c) => {
 
 qrCodeRoutes.get(
   "/:id/download",
+  canRead,
   zValidator("query", downloadQRCodeSchema),
   async (c) => {
     const userId = c.get("userId") as string;

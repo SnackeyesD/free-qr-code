@@ -63,11 +63,6 @@ export function useSettings(): UseSettingsReturn {
     try {
       const updated = await updateProfile(data);
       setUser(updated);
-      if (data.nouveauMotDePasse) {
-        authRef.current.login({ email: updated.email, motDePasse: data.nouveauMotDePasse }).catch(() => {});
-      } else {
-        authRef.current.login({ email: updated.email, motDePasse: data.ancienMotDePasse ?? '' }).catch(() => {});
-      }
       setSuccess('Vos paramètres ont été enregistrés.');
     } catch (err) {
       setError(extractErrorMessage(err, 'Impossible de mettre à jour le profil.'));

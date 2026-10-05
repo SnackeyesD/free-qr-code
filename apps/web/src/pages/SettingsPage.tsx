@@ -75,11 +75,11 @@ export default function SettingsPage() {
 
   const onSubmitPassword = async (data: PasswordFormData) => {
     clearMessages();
+    
     await update({
       ancienMotDePasse: data.ancienMotDePasse,
       nouveauMotDePasse: data.nouveauMotDePasse,
     });
-    resetPassword();
   };
 
   return (

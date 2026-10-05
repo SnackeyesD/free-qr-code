@@ -34,12 +34,15 @@ export interface RefreshTokenRow {
 
 export interface TokenEmailRow {
   id: number;
+  public_id: string;
   id_utilisateur: number;
-  token: string;
-  type: string;
-  est_utilise: number;
-  date_creation: string;
+  token_hash: string;
+  type: 'verification' | 'reinitialisation';
   date_expiration: string;
+  date_utilisation: string | null;
+  est_utilise: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ApiKeyRow {

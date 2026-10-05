@@ -82,7 +82,7 @@ userRoutes.patch('/', zValidator('json', updateMeSchema), async (c) => {
   if (!updatedRow) {
     throw new HTTPException(404, { message: 'User not found' });
   }
-  return c.json(toPublicUser(mapUser(updatedRow)));
+  return c.json({success: true, ...toPublicUser(mapUser(updatedRow))});
 });
 
 userRoutes.get('/sessions', async (c) => {

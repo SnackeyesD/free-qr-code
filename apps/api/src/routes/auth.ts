@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
-import { sendVerificationEmail } from "../services/email.js";
+import { sendResetEmail, sendVerificationEmail } from "../services/email.js";
 import {
   getD1,
   nowDb,
@@ -50,6 +50,18 @@ const verifyEmailSchema = z.object({
   token: z.string().min(1),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .email()
+    .transform((v) => v.toLowerCase().trim()),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  motDePasse: z.string().min(8),
+});
+
 export const authRoutes = new Hono<AppEnv>();
 
 authRoutes.use(
@@ -62,6 +74,14 @@ authRoutes.use(
 );
 authRoutes.use(
   "/refresh",
+  rateLimitMiddleware as import("hono").MiddlewareHandler<AppEnv>,
+);
+authRoutes.use(
+  "/forgot-password",
+  rateLimitMiddleware as import("hono").MiddlewareHandler<AppEnv>,
+);
+authRoutes.use(
+  "/reset-password",
   rateLimitMiddleware as import("hono").MiddlewareHandler<AppEnv>,
 );
 
@@ -408,5 +428,118 @@ authRoutes.post(
       expiresAt: pair.accessExpiresAt,
       user: userPublicFromRow(userRow),
     });
+  },
+);
+
+function getFrontendBaseUrl(env: AppEnv["Bindings"]): string {
+  const frontend = (env.FRONTEND_URL as unknown as string | undefined)?.trim();
+  if (frontend) return frontend.replace(/\/$/, "");
+  const apiBase = env.API_BASE_URL?.replace(/\/$/, "");
+  if (apiBase) return apiBase;
+  return "http://localhost:5173";
+}
+
+authRoutes.post(
+  "/forgot-password",
+  zValidator("json", forgotPasswordSchema),
+  async (c) => {
+    const { email } = c.req.valid("json");
+    const db = getD1(c.env);
+    const genericResponse = {
+      success: true,
+      message:
+        "Si un compte existe avec cet email, vous recevrez un lien de réinitialisation.",
+    };
+
+    const row = await db
+      .prepare("SELECT * FROM utilisateurs WHERE email = ?")
+      .bind(email)
+      .first<UserRow>();
+
+    // Anti-énumération : réponse identique que le compte existe ou non.
+    if (!row || row.est_actif !== 1) {
+      return c.json(genericResponse);
+    }
+
+    // Invalide les demandes précédentes encore actives.
+    await db
+      .prepare(
+        "UPDATE tokens_email SET est_utilise = ?, date_utilisation = ? WHERE id_utilisateur = ? AND type = ? AND est_utilise = ?",
+      )
+      .bind(1, nowDb(), row.id, "reinitialisation", 0)
+      .run();
+
+    const resetTokenPlain = crypto.randomUUID();
+    const resetTokenHash = await sha256(resetTokenPlain);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    await db
+      .prepare(
+        "INSERT INTO tokens_email (public_id, id_utilisateur, token_hash, type, date_expiration, est_utilise) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        crypto.randomUUID(),
+        row.id,
+        resetTokenHash,
+        "reinitialisation",
+        expiresAt,
+        0,
+      )
+      .run();
+
+    const resetLink = `${getFrontendBaseUrl(c.env)}/reset-password/${resetTokenPlain}`;
+    c.executionCtx.waitUntil(sendResetEmail(c.env, row.email, resetLink));
+
+    return c.json(genericResponse);
+  },
+);
+
+authRoutes.post(
+  "/reset-password",
+  zValidator("json", resetPasswordSchema),
+  async (c) => {
+    const { token, motDePasse } = c.req.valid("json");
+    const db = getD1(c.env);
+    const tokenHash = await sha256(token);
+
+    const tokenRow = await db
+      .prepare(
+        "SELECT * FROM tokens_email WHERE token_hash = ? AND type = ?",
+      )
+      .bind(tokenHash, "reinitialisation")
+      .first<{
+        id: number;
+        id_utilisateur: number;
+        date_expiration: string;
+        est_utilise: number;
+      }>();
+
+    if (!tokenRow || tokenRow.est_utilise === 1) {
+      throw new HTTPException(400, {
+        message: "Invalid or expired reset token",
+      });
+    }
+    if (new Date(tokenRow.date_expiration) < new Date()) {
+      throw new HTTPException(400, { message: "Reset token expired" });
+    }
+
+    const hashed = await hashPassword(motDePasse);
+    await db
+      .prepare("UPDATE utilisateurs SET mot_de_passe = ?, updated_at = ? WHERE id = ?")
+      .bind(hashed, nowDb(), tokenRow.id_utilisateur)
+      .run();
+    await db
+      .prepare("UPDATE tokens_email SET est_utilise = ?, date_utilisation = ? WHERE id = ?")
+      .bind(1, nowDb(), tokenRow.id)
+      .run();
+    // Force la déconnexion des autres sessions après un reset.
+    await db
+      .prepare(
+        "UPDATE refresh_tokens SET est_revoke = ?, date_revocation = ? WHERE id_utilisateur = ? AND date_revocation IS NULL",
+      )
+      .bind(1, nowDb(), tokenRow.id_utilisateur)
+      .run();
+
+    return c.json({ success: true });
   },
 );
