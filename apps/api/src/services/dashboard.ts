@@ -101,9 +101,12 @@ export async function getUserDashboardStats(
     nom: string;
     scansTotal: number;
     aliasCourt: string | null;
+    estDynamique: number;
+    dateCreation: string;
   }>(
     env,
-    `SELECT q.id, q.contenu AS nom, q.nombre_scans_total AS scansTotal, q.alias_court AS aliasCourt
+    `SELECT q.id, q.contenu AS nom, q.nombre_scans_total AS scansTotal, q.alias_court AS aliasCourt,
+    q.est_dynamique AS estDynamique, q.date_creation AS dateCreation
      FROM qrcodes q
      WHERE q.id_utilisateur = ?
      ORDER BY q.nombre_scans_total DESC
@@ -117,9 +120,10 @@ export async function getUserDashboardStats(
     typeContenu: string;
     dateCreation: string;
     estActif: number;
+    estDynamique: number;
   }>(
     env,
-    `SELECT q.id, q.contenu AS nom, q.type_contenu AS typeContenu, q.date_creation AS dateCreation, q.est_actif AS estActif
+    `SELECT q.id, q.contenu AS nom, q.type_contenu AS typeContenu, q.date_creation AS dateCreation, q.est_actif AS estActif, q.est_dynamique AS estDynamique
      FROM qrcodes q
      WHERE q.id_utilisateur = ?
      ORDER BY q.date_creation DESC
@@ -132,10 +136,11 @@ export async function getUserDashboardStats(
     scans7j: scans7jRow?.total ?? 0,
     scansUniques7j: scansUniques7jRow?.total ?? 0,
     totalScans: totalScansRow?.total ?? 0,
-    topQRcodes: topQRCodes,
+    topQRcodes: topQRCodes.map((qr) => ({ ...qr, estDynamique: qr.estDynamique === 1 })),
     recentQRCodes: recentQRCodes.map((qr) => ({
       ...qr,
       estActif: qr.estActif === 1,
+      estDynamique: qr.estDynamique === 1,
     })),
   };
 }

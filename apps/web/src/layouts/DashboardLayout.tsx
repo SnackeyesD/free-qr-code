@@ -1,6 +1,6 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 const navItems = [
   { to: '/dashboard', label: "Vue d'ensemble" },
@@ -22,6 +22,26 @@ const adminItems = [
 export function DashboardLayout() {
   const { user, isLoading, logout } = useAuth();
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Ferme le drawer à chaque navigation
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  // Échap + scroll lock pendant que le drawer est ouvert
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
 
   if (isLoading) {
     return (
@@ -39,11 +59,33 @@ export function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-64 border-r border-gray-200 bg-white flex flex-col">
-        <div className="flex h-16 items-center px-6">
+      {menuOpen && (
+        <div
+          aria-hidden="true"
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-30 bg-gray-900/50 lg:hidden"
+        />
+      )}
+      <aside
+        id="dashboard-sidebar"
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white motion-safe:transition-transform motion-safe:duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex h-16 items-center justify-between px-6">
           <Link to="/" className="text-xl font-bold text-indigo-600">
             Free QR Code
           </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Fermer le menu"
+            className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true">
+              <path d="m5 5 10 10M15 5 5 15" strokeLinecap="round" />
+            </svg>
+          </button>
         </div>
         <nav aria-label="Menu dashboard" className="flex-1 space-y-1 px-4 py-4">
           {navItems.map((item) => (
@@ -91,20 +133,34 @@ export function DashboardLayout() {
           <button
             type="button"
             onClick={() => void logout()}
-            className="w-full rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200"
+            className="w-full rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-200"
           >
             Déconnexion
           </button>
         </div>
       </aside>
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8">
-          <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
-          <Link to="/dashboard/settings" className="text-sm font-medium text-gray-700 hover:text-indigo-600">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 sm:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-expanded={menuOpen}
+              aria-controls="dashboard-sidebar"
+              aria-label="Ouvrir le menu"
+              className="rounded-md p-1.5 text-gray-700 transition-colors hover:bg-gray-100 lg:hidden"
+            >
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true">
+                <path d="M3 5h14M3 10h14M3 15h14" strokeLinecap="round" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
+          </div>
+          <Link to="/dashboard/settings" className="whitespace-nowrap text-sm font-medium text-gray-700 transition-colors hover:text-indigo-600">
             Mon compte
           </Link>
         </header>
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 sm:p-8">
           <Outlet />
         </main>
       </div>

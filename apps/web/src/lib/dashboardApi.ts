@@ -7,6 +7,7 @@ export interface RecentQRCode {
   typeContenu: string;
   dateCreation: string;
   estActif: boolean;
+  estDynamique: boolean;
 }
 
 export interface TopQRCode {
@@ -14,6 +15,8 @@ export interface TopQRCode {
   nom: string;
   scansTotal: number;
   aliasCourt: string | null;
+  estDynamique: boolean;
+  dateCreation: string;
 }
 
 export interface DashboardStats {
@@ -52,11 +55,11 @@ export function toQRCodeListItem(qr: RecentQRCode | TopQRCode): QRCode {
     idUtilisateur: '',
     contenu: qr.nom,
     typeContenu: isRecent ? ((qr as RecentQRCode).typeContenu as TypeContenuQR) : 'url',
-    estDynamique: false,
+    estDynamique: qr.estDynamique,
     aliasCourt: 'aliasCourt' in qr ? ((qr as TopQRCode).aliasCourt ?? undefined) : undefined,
     parametres: {},
     estActif: isRecent ? (qr as RecentQRCode).estActif : true,
-    dateCreation: isRecent ? (qr as RecentQRCode).dateCreation : new Date().toISOString(),
+    dateCreation: qr.dateCreation,
     nombreScansTotal: 'scansTotal' in qr ? (qr as TopQRCode).scansTotal : 0,
   };
 }

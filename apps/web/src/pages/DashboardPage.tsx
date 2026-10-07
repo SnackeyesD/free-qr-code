@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { toQRCodeListItem, type RecentQRCode, type TopQRCode } from '@/lib/dashboardApi';
 import type { QRCode } from '@free-qr/shared-types';
+ import { buildPreviewUrl } from '@/lib/qrPreview';
 
 function formatDate(value: Date | string | undefined): string {
   if (!value) return '—';
@@ -17,24 +18,27 @@ function QRPreviewImage({ qr }: { qr: QRCode }) {
       <img
         src={qr.urlImage}
         alt=""
-        className="h-12 w-12 rounded-md border border-gray-100 bg-white object-contain p-0.5"
+        className="h-12 w-12 shrink-0 rounded-md border border-gray-100 bg-white object-contain p-0.5"
       />
     );
   }
 
-  const params = new URLSearchParams();
-  params.set('data', qr.contenu);
-  if (qr.parametres?.couleur) params.set('color', String(qr.parametres.couleur).replace('#', ''));
-  if (qr.parametres?.background) params.set('bgcolor', String(qr.parametres.background).replace('#', ''));
-  params.set('size', '80');
-  if (qr.parametres?.correction) params.set('level', qr.parametres.correction);
+  const previewUrl = buildPreviewUrl(qr.contenu, qr.parametres, 96);
+  if (!previewUrl) {
+    return (
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400">
+        QR
+      </div>
+    );
+  }
   return (
     <img
-      src={`https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`}
+      src={previewUrl}
       alt=""
-      className="h-12 w-12 rounded-md border border-gray-100 bg-white object-contain p-0.5"
+      className="h-12 w-12 shrink-0 rounded-md border border-gray-100 bg-white object-contain p-0.5"
     />
   );
+  
 }
 
 function QRListItem({ qr, showScans }: { qr: QRCode; showScans?: boolean }) {
@@ -44,14 +48,14 @@ function QRListItem({ qr, showScans }: { qr: QRCode; showScans?: boolean }) {
     : 'bg-gray-100 text-gray-800';
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:gap-4">
       <QRPreviewImage qr={qr} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${typeClass}`}>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${typeClass}`}>
             {typeLabel}
           </span>
-          <span className={`text-xs ${qr.estActif ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`shrink-0 text-xs ${qr.estActif ? 'text-green-600' : 'text-red-600'}`}>
             {qr.estActif ? 'Actif' : 'Inactif'}
           </span>
         </div>
@@ -66,13 +70,16 @@ function QRListItem({ qr, showScans }: { qr: QRCode; showScans?: boolean }) {
           {qr.contenu}
         </p>
       </div>
-      {showScans && (
-        <div className="text-right text-sm">
-          <div className="font-semibold text-gray-900">{qr.nombreScansTotal}</div>
+      {showScans && qr.estDynamique && (
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-semibold text-gray-900">{qr.nombreScansTotal}</div>
           <div className="text-xs text-gray-500">scan{qr.nombreScansTotal !== 1 ? 's' : ''}</div>
         </div>
       )}
-      <div className="text-right text-xs text-gray-500">
+      {showScans && !qr.estDynamique && (
+       <div className="shrink-0 text-right text-xs italic text-gray-400">Non suivi</div>
+     )}
+      <div className="hidden shrink-0 text-right text-xs text-gray-500 sm:block">
         <div>{formatDate(qr.dateCreation)}</div>
       </div>
     </div>
@@ -146,8 +153,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-lg bg-white p-6 shadow-sm">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className=" min-w-0 rounded-lg bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-900">QR codes récents</h3>
                 <Link
