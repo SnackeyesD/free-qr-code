@@ -1,5 +1,6 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Logo } from '@/components/Logo';
 
 export function PublicLayout({ children }: { children?: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -24,7 +25,8 @@ export function PublicLayout({ children }: { children?: React.ReactNode }) {
       <header className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <Link to="/" className="whitespace-nowrap text-lg font-bold text-indigo-600 sm:text-xl">
+            <Link to="/" className="flex items-center gap-2 whitespace-nowrap text-lg font-bold text-indigo-600 sm:text-xl">
+              <Logo className="h-7 w-7 shrink-0" />
               Free QR Code
             </Link>
             <nav className="flex items-center gap-2 sm:gap-4" aria-label="Navigation publique">

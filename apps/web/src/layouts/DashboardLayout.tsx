@@ -1,6 +1,7 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, type ReactNode } from 'react';
+import { Logo } from '@/components/Logo';
 
 const navItems = [
   { to: '/dashboard', label: "Vue d'ensemble" },
@@ -73,7 +74,8 @@ export function DashboardLayout() {
         }`}
       >
         <div className="flex h-16 items-center justify-between px-6">
-          <Link to="/" className="text-xl font-bold text-indigo-600">
+          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-indigo-600">
+            <Logo className="h-7 w-7 shrink-0" />
             Free QR Code
           </Link>
           <button

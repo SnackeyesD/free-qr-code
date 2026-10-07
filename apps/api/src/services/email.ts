@@ -7,17 +7,23 @@ async function postToEmailWorker(
   payload: Record<string, unknown>,
   label: string,
 ): Promise<void> {
-  if (!env.EMAIL_WORKER_URL) {
-    console.error(`Envoi email ${label} ignoré: EMAIL_WORKER_URL manquant`);
-    return;
-  }
   try {
-    const response = await fetch(`${env.EMAIL_WORKER_URL}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
+    const body = JSON.stringify(payload);
+     const headers = { "Content-Type": "application/json" };
+     const response = env.EMAIL_WORKER
+       ? await env.EMAIL_WORKER.fetch(`https://internal${path}`, {
+           method: "POST",
+           headers,
+           body,
+         })
+       : await (async () => {
+           if (!env.EMAIL_WORKER_URL) {
+             console.error(`Envoi email ${label} ignoré: ni binding ni EMAIL_WORKER_URL`);
+             return null;
+           }
+           return fetch(`${env.EMAIL_WORKER_URL}${path}`, { method: "POST", headers, body });
+         })();
+    if (!response) return;
     if (!response.ok) {
       const errorText = await response.text();
       console.error(

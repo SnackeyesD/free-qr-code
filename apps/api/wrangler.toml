@@ -3,11 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2025-03-01"
 compatibility_flags = ["nodejs_compat"]
 
+[[services]]
+binding = "EMAIL_WORKER"
+service = "emailworker"
+
 [vars]
 API_BASE_URL = "https://free-qr-api.messiasayi.workers.dev"
-CORS_ORIGINS = "https://free-qr-code-saas.getcongo.com/"
+CORS_ORIGINS = "https://free-qr-code-saas.getcongo.com"
 FRONTEND_URL = "https://free-qr-code-saas.getcongo.com"
 SMTP_FROM = "noreply@free-qrcode.app"
+
 [[r2_buckets]]
 binding = "QR_IMAGES"
 bucket_name = "qr-saas-images"

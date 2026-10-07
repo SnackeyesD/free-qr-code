@@ -1,5 +1,5 @@
 import type { Context, Env, Hono, Next, Handler } from "hono";
-import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
+import type { D1Database, R2Bucket, Fetcher } from "@cloudflare/workers-types";
 
 declare global {
   interface KVNamespace {
@@ -25,7 +25,8 @@ export interface AppEnv {
     API_BASE_URL: string;
     CORS_ORIGINS: string;
     FRONTEND_URL: String;
-    EMAIL_WORKER_URL: string;
+    EMAIL_WORKER_URL?: string;
+    EMAIL_WORKER?: Fetcher;
     ACCESS_TOKEN_TTL_SECONDS: string;
     REFRESH_TOKEN_TTL_DAYS: string;
     RATE_LIMIT_WINDOW_SECONDS: string;
