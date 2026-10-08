@@ -1,9 +1,16 @@
 name = "free-qr-api"
 main = "src/index.ts"
 compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[services]]
+binding = "EMAIL_WORKER"
+service = "emailworker"
 
 [vars]
-JWT_TRACKING_SECRET = "dev-tracking-secret-change-me"
+API_BASE_URL = "https://free-qr-api.messiasayi.workers.dev"
+CORS_ORIGINS = "https://free-qr-code-saas.getcongo.com"
+FRONTEND_URL = "https://free-qr-code-saas.getcongo.com"
 SMTP_FROM = "noreply@free-qrcode.app"
 
 [[r2_buckets]]
@@ -13,5 +20,5 @@ bucket_name = "qr-saas-images"
 [[d1_databases]]
 binding = "DB"
 database_name = "free-qr-api-db"
-database_id = "<your-d1-database-id>"
+database_id = "1bdd4b44-714d-4af1-931d-cb5b253ffc76"
 migrations_dir = "migrations"

@@ -1,5 +1,6 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Logo } from '@/components/Logo';
 
 export function PublicLayout({ children }: { children?: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -24,31 +25,32 @@ export function PublicLayout({ children }: { children?: React.ReactNode }) {
       <header className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <Link to="/" className="text-xl font-bold text-indigo-600">
+            <Link to="/" className="flex items-center gap-2 whitespace-nowrap text-lg font-bold text-indigo-600 sm:text-xl">
+              <Logo className="h-7 w-7 shrink-0" />
               Free QR Code
             </Link>
-            <nav className="flex items-center gap-4" aria-label="Navigation publique">
-              <Link to="/features" className="text-sm font-medium text-gray-700 hover:text-indigo-600">
+            <nav className="flex items-center gap-2 sm:gap-4" aria-label="Navigation publique">
+              <Link to="/features" className="hidden text-sm font-medium text-gray-700 transition-colors hover:text-indigo-600 sm:inline-block">
                 Fonctionnalités
               </Link>
-              <Link to="/pricing" className="text-sm font-medium text-gray-700 hover:text-indigo-600">
+              <Link to="/pricing" className="hidden text-sm font-medium text-gray-700 transition-colors hover:text-indigo-600 sm:inline-block">
                 Tarifs
               </Link>
               {user ? (
                 <Link
                   to="/dashboard"
-                  className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                  className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
                 >
                   Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="text-sm font-semibold text-gray-900 hover:text-indigo-600">
+                  <Link to="/login" className="whitespace-nowrap text-sm font-semibold text-gray-900 transition-colors hover:text-indigo-600">
                     Se connecter
                   </Link>
                   <Link
                     to="/register"
-                    className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                    className="whitespace-nowrap rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
                   >
                     S'inscrire
                   </Link>

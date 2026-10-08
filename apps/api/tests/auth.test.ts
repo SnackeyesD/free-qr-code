@@ -127,6 +127,80 @@ describe('Auth API', () => {
     });
     expect(res.status).toBe(200);
   });
+
+  it('POST /auth/forgot-password returns 200 for existing user and creates a token', async () => {
+    await createVerifiedUser(ctx.env, 'ivan@example.com', 'StrongPass123!', 'Ivan');
+    const res = await makeRequest(app, ctx.env, 'POST', '/auth/forgot-password', {
+      body: { email: 'ivan@example.com' },
+    });
+    expect(res.status).toBe(200);
+    const row = ctx.db
+      .prepare("SELECT * FROM tokens_email WHERE type = 'reinitialisation'")
+      .get() as Record<string, unknown> | undefined;
+    expect(row).toBeDefined();
+    expect(row?.est_utilise).toBe(0);
+  });
+
+  it('POST /auth/forgot-password returns 200 for unknown email without leaking', async () => {
+    const res = await makeRequest(app, ctx.env, 'POST', '/auth/forgot-password', {
+      body: { email: 'ghost@example.com' },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { success: boolean };
+    expect(body.success).toBe(true);
+    const count = ctx.db
+      .prepare("SELECT COUNT(*) AS n FROM tokens_email WHERE type = 'reinitialisation'")
+      .get() as { n: number };
+    expect(count.n).toBe(0);
+  });
+
+  it('POST /auth/reset-password resets password and revokes sessions', async () => {
+    const user = await createVerifiedUser(ctx.env, 'judy@example.com', 'StrongPass123!', 'Judy');
+    const plain = crypto.randomUUID();
+    const hash = await crypto.subtle
+      .digest('SHA-256', new TextEncoder().encode(plain))
+      .then((b) =>
+        Array.from(new Uint8Array(b))
+          .map((x) => x.toString(16).padStart(2, '0'))
+          .join(''),
+      );
+    ctx.db
+      .prepare(
+        "INSERT INTO tokens_email (public_id, id_utilisateur, token_hash, type, date_expiration, est_utilise) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(
+        crypto.randomUUID(),
+        Number(user.id),
+        hash,
+        'reinitialisation',
+        new Date(Date.now() + 3600_000).toISOString(),
+        0,
+      );
+    const res = await makeRequest(app, ctx.env, 'POST', '/auth/reset-password', {
+      body: { token: plain, motDePasse: 'BrandNewPass123!' },
+    });
+    expect(res.status).toBe(200);
+    const login = await makeRequest(app, ctx.env, 'POST', '/auth/login', {
+      body: { email: 'judy@example.com', motDePasse: 'BrandNewPass123!' },
+    });
+    expect(login.status).toBe(200);
+    // Reuse of the same token must fail
+    const reuse = await makeRequest(app, ctx.env, 'POST', '/auth/reset-password', {
+      body: { token: plain, motDePasse: 'AnotherPass123!' },
+    });
+    expect(reuse.status).toBe(400);
+  });
+
+  it('POST /auth/reset-password rejects invalid token and weak password', async () => {
+    const invalid = await makeRequest(app, ctx.env, 'POST', '/auth/reset-password', {
+      body: { token: 'does-not-exist', motDePasse: 'BrandNewPass123!' },
+    });
+    expect(invalid.status).toBe(400);
+    const weak = await makeRequest(app, ctx.env, 'POST', '/auth/reset-password', {
+      body: { token: 'does-not-exist', motDePasse: '123' },
+    });
+    expect(weak.status).toBe(400);
+  });
 });
 
 export {};

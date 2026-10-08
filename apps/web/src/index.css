@@ -7,3 +7,88 @@
     @apply bg-gray-50 text-gray-900 antialiased;
   }
 }
+
+/* Scène QR animée — keyframes en CSS pur, hors de Tailwind :
+   @apply d'utilities custom est fragile en dev (cache config vite). */
+@keyframes qr-pop {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes qr-scan {
+  /* beam de 107px (320/3) : -112px = hors haut, 432px = hors bas (viewBox 320) */
+  from { transform: translateY(-112px); }
+  to { transform: translateY(432px); }
+}
+@keyframes qr-settle {
+  from { transform: scale(1.015); }
+  to { transform: scale(1); }
+}
+
+@layer utilities {
+  /* le pop scale depuis le centre de chaque élément, pas du SVG entier */
+  .qr-finder,
+  .qr-band,
+  .qr-pop,
+  .qr-settle {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+}
+
+/* hors @layer : jamais purgé ; équivaut à la variante motion-safe: */
+@media (prefers-reduced-motion: no-preference) {
+  .qr-finder,
+  .qr-band,
+  .qr-pop {
+    animation: qr-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .qr-beam {
+    animation: qr-scan 1.6s ease-in-out 2.6s both;
+  }
+  .qr-settle {
+    animation: qr-settle 0.4s ease-out 2s both;
+  }
+}
+
+/* ---------- Background hero : grille de modules QR + vague lumineuse ---------- */
+/* Le data-URI doit rester STRICTEMENT identique entre background-image et
+   mask-image : la vague doit allumer les carrés de la grille, pas un réseau
+   décalé. */
+.qr-grid-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='1' y='1' width='2.5' height='2.5' fill='%23e5e7eb'/%3E%3C/svg%3E");
+}
+
+.qr-grid-wave {
+  display: none;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='1' y='1' width='2.5' height='2.5' fill='%23e5e7eb'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Crect x='1' y='1' width='2.5' height='2.5' fill='%23e5e7eb'/%3E%3C/svg%3E");
+}
+
+/* Sans mask-image, le bandeau serait une tache indigo : on cache la couche. */
+@supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+  .qr-grid-wave {
+    display: block;
+  }
+}
+
+.qr-grid-wave-band {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 55%;
+  transform: rotate(-4deg);
+  background: linear-gradient(105deg, transparent 35%, rgba(79, 70, 229, 0.05) 50%, transparent 65%);
+}
+
+/* le rotate est dans le keyframe : un transform statique serait écrasé */
+@keyframes qr-grid-sweep {
+  from { transform: rotate(-4deg) translateX(-110%); }
+  to { transform: rotate(-4deg) translateX(360%); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .qr-grid-wave-band {
+    animation: qr-grid-sweep 25s linear infinite;
+  }
+}

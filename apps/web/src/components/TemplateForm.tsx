@@ -3,6 +3,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMemo } from 'react';
 import { z } from 'zod';
 import type { QRCodeDesign, TypeContenuQR } from '@free-qr/shared-types';
+ import { buildPreviewUrl } from '@/lib/qrPreview';
+
 
 const templateFormSchema = z.object({
   nom: z.string().min(1, 'Le nom est requis'),
@@ -67,13 +69,7 @@ function useMemoPreviewUrl(
         data = `https://${contenu}`;
       }
     }
-    const params = new URLSearchParams();
-    params.set('data', data);
-    params.set('size', String(taille));
-    params.set('color', couleur.replace('#', ''));
-    params.set('bgcolor', background.replace('#', ''));
-    params.set('level', correction);
-    return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
+    return buildPreviewUrl(data, { couleur, background, correction }, taille);
   }, [contenu, typeContenu, couleur, background, taille, correction]);
 }
 
