@@ -52,7 +52,6 @@ export default function SettingsPage() {
   const {
     register: registerPassword,
     handleSubmit: handleSubmitPassword,
-    reset: resetPassword,
     formState: { errors: passwordErrors },
   } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
