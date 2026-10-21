@@ -36,6 +36,7 @@ export interface AppEnv {
     SMTP_API_URL?: string;
     SMTP_FROM?: string;
     R2_PUBLIC_URL?: string;
+    R2_SIGNING_SECRET?: string;
     QR_IMAGES?: R2Bucket;
   };
   Variables: {

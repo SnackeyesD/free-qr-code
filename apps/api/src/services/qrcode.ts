@@ -17,6 +17,7 @@ import {
   getPublicR2Url,
   deleteQRImage,
 } from "../lib/r2.js";
+import { signR2Url } from "../lib/r2-signed-url.js";
 import type {
   CreateQRCodeInput,
   UpdateQRCodeInput,
@@ -64,7 +65,10 @@ function parseParameters(parametres: string | null): QRCodeType["parametres"] {
   }
 }
 
-function toPublicQR(row: QRCodeRow): QRCodeType {
+async function toPublicQR(
+  env: AppEnv["Bindings"],
+  row: QRCodeRow,
+): Promise<QRCodeType> {
   return {
     id: String(row.id),
     idUtilisateur: String(row.id_utilisateur),
@@ -77,7 +81,9 @@ function toPublicQR(row: QRCodeRow): QRCodeType {
     dateCreation: row.date_creation,
     dateExpiration: row.date_expiration ?? undefined,
     nombreScansTotal: row.nombre_scans_total,
-    urlImage: row.url_image ?? undefined,
+    urlImage: row.url_image
+      ? await signR2Url(env, row.url_image)
+      : undefined,
     idModele: row.id_modele ? String(row.id_modele) : undefined,
   };
 }
@@ -181,7 +187,7 @@ export async function createQRCode(
     );
   }
 
-  return toPublicQR({
+  return toPublicQR(env, {
     id: qrId,
     public_id: publicId,
     id_utilisateur: idUtilisateur,
@@ -254,7 +260,7 @@ export async function listQRCodes(
   );
 
   return {
-    data: rows.map(toPublicQR),
+    data: await Promise.all(rows.map((row) => toPublicQR(env, row))),
     total,
     page,
     limit,
@@ -282,7 +288,7 @@ export async function getQRCodeById(
   if (!row) {
     throw new HTTPException(404, { message: "QR code not found" });
   }
-  return toPublicQR(row);
+  return toPublicQR(env, row);
 }
 
 export async function getQRCodeByPublicId(
@@ -304,7 +310,7 @@ export async function getQRCodeByPublicId(
   if (!row) {
     throw new HTTPException(404, { message: "QR code not found" });
   }
-  return toPublicQR(row);
+  return toPublicQR(env, row);
 }
 
 export async function updateQRCode(
@@ -351,7 +357,7 @@ export async function updateQRCode(
   }
 
   if (Object.keys(updates).length === 0) {
-    return toPublicQR(existing);
+    return toPublicQR(env, existing);
   }
 
   for (const [key, value] of Object.entries(updates)) {
@@ -397,7 +403,7 @@ export async function updateQRCode(
     }
   }
 
-  return toPublicQR(updated);
+  return toPublicQR(env, updated);
 }
 
 export async function deleteQRCode(
@@ -449,7 +455,7 @@ export async function resolveQRByAlias(
   if (row.est_actif !== 1) {
     throw new HTTPException(404, { message: "QR code not found or inactive" });
   }
-  return toPublicQR(row);
+  return toPublicQR(env, row);
 }
 
 export { toPublicQR };

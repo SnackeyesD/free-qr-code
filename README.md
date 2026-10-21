@@ -250,7 +250,7 @@ Plans d'implémentation opérationnels dans [`doc/`](./doc) (preview QR, landing
 
 - **Dualité `design` / `parametres`** : la création accepte `design`, la modification et la lecture exposent `parametres` (même objet `QRCodeDesign`). À unifier côté API.
 - **Journal d'audit** : table `journaux_qrcodes` migrée mais aucun endpoint ne l'expose.
-- **Images R2 sans auth** : `GET /r2/users/:userId/qrcodes/:filename` n'a aucun middleware — toute image est téléchargeable par URL directe. Assumer (URLs non listables) ou protéger.
+- **Images R2 signées** : `GET /r2/users/:userId/qrcodes/:filename` exige une URL signée (`?exp=&sig=`, HMAC-SHA256, TTL 7 jours, re-signée à chaque lecture d'un QR). Clé : `R2_SIGNING_SECRET` (secret Cloudflare), repli sur `JWT_ACCESS_SECRET`. Les URLs directes `R2_PUBLIC_URL` (hors worker) ne sont pas signables — à éviter si la confidentialité des images compte.
 - **Consentement marketing obligatoire** à l'inscription côté front (`RegisterPage`) : à rendre optionnel (RGPD).
 - **Emails** : compte Resend en test tant que le domaine d'envoi n'est pas vérifié (seul l'email propriétaire reçoit) ; worker email externe requis (`/api/sendVerification`, `/api/sendReset`).
 - **SEO** : pré-rendu statique des pages publiques recommandé (SPA sur hébergement mutualisé) ; `robots.txt` + `sitemap.xml` déjà dans `public/`.
