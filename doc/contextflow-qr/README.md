@@ -14,6 +14,7 @@ Routage contextuel des QR dynamiques : un seul QR imprimé, plusieurs destinatio
 | 05 | [`05_PHASE_4_APPAREIL_CONSENTEMENT.md`](./05_PHASE_4_APPAREIL_CONSENTEMENT.md) | Cookie `cfq_did`, bandeau, compteur par appareil | ~3–4 j | ✅ |
 | 06 | [`06_PHASE_5_MONETISATION.md`](./06_PHASE_5_MONETISATION.md) | `plan`, flag Pro, quotas, métriques d'adoption | ~2 j | ✅ |
 | 07 | [`07_CORRECTIF_CONTENU_DYNAMIQUE.md`](./07_CORRECTIF_CONTENU_DYNAMIQUE.md) | Correctif `Invalid header value` : vCard servie en `.vcf`, contenu dynamique non limité aux URL | — | ✅ déployé |
+| 08 | [`08_FICHES_DOCUMENTS.md`](./08_FICHES_DOCUMENTS.md) | Fiches : modèles de champs libres, document rendu par le frontend, mode hébergé puis portable | ~9–13 j | 📝 à valider |
 
 ## Ordre d'exécution
 
@@ -27,6 +28,8 @@ Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 5
 - **2** est la feature qui justifie l'abonnement (ne pas la sauter).
 - **3** et **4** sont indépendantes entre elles (mais 4 suppose 1 + 2).
 - **5** peut être faite n'importe quand après 1.
+- **8 (Fiches)** est une feature satellite : elle ne dépend d'aucune phase ContextFlow et
+  ne modifie pas le runtime de redirection. Voir [`08_FICHES_DOCUMENTS.md`](./08_FICHES_DOCUMENTS.md).
 
 ## Décisions verrouillées
 
