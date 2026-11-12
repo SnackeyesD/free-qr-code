@@ -2,7 +2,7 @@
 
 **Date :** 2026-11-12
 **Incident :** `GET /q/oz4a205` renvoyait `500 Invalid header value`
-**Statut :** corrigé et validé **en local** (`168/168` tests + test `wrangler dev`). **Pas encore déployé** : la production attend la validation explicite.
+**Statut :** corrigé, validé **en local** (`168/168` tests + test `wrangler dev`) puis **déployé en production** le 2026-11-12 (version Worker `8025faf3-c03d-4903-b7b3-3ba4f45d0f49`), avec restauration de la vCard `oz4a205` et vérification des quatre QR dynamiques concernés.
 
 ---
 
@@ -119,35 +119,45 @@ GET /q/url-local    → 302 Location: https://example.com/local
 GET /q/texte-local  → 200 text/plain; charset=utf-8
 ```
 
-## 5. État de la production (à corriger au déploiement)
+## 5. Production (déployée le 2026-11-12)
 
-Le déploiement prématuré du premier correctif est toujours actif :
+Le premier correctif (URL-only) avait été déployé prématurément. Il a été remplacé par ce correctif :
 
-- le Worker en production applique encore la validation **URL-only** (à remplacer par ce correctif) ;
-- la ligne `oz4a205` contient temporairement `https://momo-calc.getcongo.com/` au lieu de la vCard d'origine ;
-- les migrations `001`→`005` ont déjà été appliquées en remote (schéma prêt, additif).
+- Worker corrigé déployé : `8025faf3-c03d-4903-b7b3-3ba4f45d0f49` ;
+- ligne `oz4a205` restaurée : vCard d'origine et `type_contenu = 'vcard'` (copie exacte du contenu de `u352vnv`) ;
+- migrations `001`→`005` déjà appliquées en remote (schéma additif).
 
-Aucune nouvelle modification de production ne sera faite sans validation.
+Quatre QR dynamiques étaient cassés par l'ancien Worker et répondent désormais :
 
-### Procédure de déploiement prévue
+| Alias | Type | Avant | Après |
+|---|---|---|---|
+| `oz4a205` | vCard | 500 | `200 text/vcard`, `.vcf` |
+| `u352vnv` | vCard | 500 | `200 text/vcard`, `.vcf` |
+| `4qwlp6y` | texte | 500 | `200 text/plain` |
+| `yppzcov` | texte | 500 | `200 text/plain` |
+
+### Procédure réellement appliquée
 
 ```bash
-# 1. Restaurer la vCard d'origine dans D1
+# 1. Déployer d'abord le Worker corrigé (les lignes encore en URL continuent
+#    de rediriger pendant le déploiement ; aucun 404 transitoire).
+pnpm --filter api run deploy
+
+# 2. Restaurer la vCard d'origine, à l'identique de id 11.
 npx wrangler d1 execute free-qr-api-db --remote --command "
 UPDATE qrcodes
-SET contenu = '<vCard d''origine>', type_contenu = 'vcard'
+SET contenu = (SELECT contenu FROM qrcodes WHERE id = 11), type_contenu = 'vcard'
 WHERE id = 10 AND alias_court = 'oz4a205';
 "
 
-# 2. Déployer le Worker corrigé
-pnpm --filter api run deploy
-
-# 3. Vérifier
-curl -sSI https://free-qr-api.messiasayi.workers.dev/q/oz4a205
-# attendu : 200, text/vcard, Content-Disposition attachment
+# 3. Vérifier.
+curl -sS -D - -o /tmp/oz.vcf https://free-qr-api.messiasayi.workers.dev/q/oz4a205
+# -> 200, text/vcard; charset=utf-8,
+#    Content-Disposition: attachment; filename="Gloire-Messia-SAYI.vcf"
+file /tmp/oz.vcf   # vCard visiting card, version 3.0
 ```
 
-La vCard d'origine à restaurer :
+La vCard servie (CRLF, URL du logo conservée) :
 
 ```
 BEGIN:VCARD
@@ -160,6 +170,14 @@ ORG:TOPINFO
 URL:https://momo-calc.getcongo.com/
 END:VCARD
 ```
+
+### Frontend
+
+Le contenu dynamique n'est plus limité aux URL côté formulaire. `QRCodeInput` /
+`QRCodeUpdateInput` transmettent désormais `typeContenu`, ce qui évite une
+détection erronée (ex. un texte composé de chiffres classé « téléphone »). Le
+build web est prêt (`apps/web/dist`) ; l'hébergement statique est manuel et n'a
+pas de cible de déploiement configurée dans le dépôt.
 
 ## 6. Décisions
 
