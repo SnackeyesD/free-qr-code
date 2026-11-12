@@ -41,6 +41,7 @@ export const createQRCodeSchema = z.object({
 
 export const updateQRCodeSchema = z.object({
   contenu: z.string().min(1).max(4096).optional(),
+  typeContenu: z.enum(typeContenuValues).optional(),
   estActif: z.boolean().optional(),
   parametres: designSchema.optional(),
 });

@@ -108,6 +108,132 @@ describe("GET /q/:alias — routage contextuel", () => {
     expect(res.headers.get("location")).toBe("https://example.com/fallback");
   });
 
+  it("sert une vCard dynamique en .vcf sans header Location", async () => {
+    const user = await createVerifiedUser(
+      ctx.env,
+      "redir-vcard@example.com",
+      "StrongPass123!",
+      "Test",
+    );
+
+    const vcard =
+      "BEGIN:VCARD\nVERSION:3.0\nFN:Gloire Messia SAYI\n" +
+      "URL:https://momo-calc.getcongo.com/\nEND:VCARD";
+    ctx.db
+      .prepare(
+        `INSERT INTO qrcodes (public_id, id_utilisateur, contenu, type_contenu, est_dynamique, alias_court, parametres)
+         VALUES (?, ?, ?, 'vcard', 1, 'vcard-dyn', '{}')`,
+      )
+      .run(crypto.randomUUID(), Number(user.id), vcard);
+
+    const res = await makeRequest(app, ctx.env, "GET", "/q/vcard-dyn");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("content-type")).toContain("text/vcard");
+    expect(res.headers.get("content-disposition")).toContain("attachment");
+    expect(res.headers.get("content-disposition")).toContain(".vcf");
+
+    const body = await res.text();
+    expect(body).toContain("BEGIN:VCARD");
+    expect(body).toContain("URL:https://momo-calc.getcongo.com/");
+    expect(body).toContain("\r\n");
+
+    const row = ctx.db
+      .prepare("SELECT nombre_scans_total FROM qrcodes WHERE alias_court = ?")
+      .get("vcard-dyn") as { nombre_scans_total: number };
+    expect(row.nombre_scans_total).toBe(1);
+  });
+
+  it("sert un texte dynamique en text/plain", async () => {
+    const user = await createVerifiedUser(
+      ctx.env,
+      "redir-texte@example.com",
+      "StrongPass123!",
+      "Test",
+    );
+
+    ctx.db
+      .prepare(
+        `INSERT INTO qrcodes (public_id, id_utilisateur, contenu, type_contenu, est_dynamique, alias_court, parametres)
+         VALUES (?, ?, ?, 'texte', 1, 'texte-dyn', '{}')`,
+      )
+      .run(crypto.randomUUID(), Number(user.id), "Bonjour tout le monde");
+
+    const res = await makeRequest(app, ctx.env, "GET", "/q/texte-dyn");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("content-type")).toContain("text/plain");
+    expect(await res.text()).toBe("Bonjour tout le monde");
+  });
+
+  it("renvoie 404 pour une destination URL invalide (jamais 500)", async () => {
+    const user = await createVerifiedUser(
+      ctx.env,
+      "redir-url-invalide@example.com",
+      "StrongPass123!",
+      "Test",
+    );
+
+    ctx.db
+      .prepare(
+        `INSERT INTO qrcodes (public_id, id_utilisateur, contenu, type_contenu, est_dynamique, alias_court, parametres)
+         VALUES (?, ?, ?, 'url', 1, 'url-invalide', '{}')`,
+      )
+      .run(crypto.randomUUID(), Number(user.id), "javascript:alert(1)");
+
+    const res = await makeRequest(app, ctx.env, "GET", "/q/url-invalide");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("location")).toBeNull();
+    expect(await res.text()).toContain("destination invalide");
+  });
+
+  it("ignore une variante non http(s) et sert le contenu natif (vCard)", async () => {
+    const user = await createVerifiedUser(
+      ctx.env,
+      "redir-vcard-variante@example.com",
+      "StrongPass123!",
+      "Test",
+    );
+
+    const cfg = config({
+      variantes: [
+        { id: "v_fr", libelle: "FR", typeSortie: "url", contenu: "https://e.test/fr" },
+        { id: "v_bad", libelle: "BAD", typeSortie: "url", contenu: "javascript:alert(1)" },
+      ],
+      regles: [
+        {
+          id: "r_bad",
+          priorite: 10,
+          varianteId: "v_bad",
+          conditions: { langues: ["en"] },
+        },
+      ],
+    });
+
+    ctx.db
+      .prepare(
+        `INSERT INTO qrcodes (public_id, id_utilisateur, contenu, type_contenu, est_dynamique, alias_court, parametres, regles_routage)
+         VALUES (?, ?, ?, 'vcard', 1, 'vcard-variante', '{}', ?)`,
+      )
+      .run(
+        crypto.randomUUID(),
+        Number(user.id),
+        "BEGIN:VCARD\nVERSION:3.0\nFN:Test\nEND:VCARD",
+        JSON.stringify(cfg),
+      );
+
+    const res = await makeRequest(app, ctx.env, "GET", "/q/vcard-variante", {
+      headers: { "Accept-Language": "en" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("content-type")).toContain("text/vcard");
+  });
+
   it("ignore une configuration inactive", async () => {
     const token = await login("redir4@example.com");
     const qr = await createDynamicQr(token);

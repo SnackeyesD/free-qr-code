@@ -258,6 +258,11 @@ paths:
               type: object
               properties:
                 contenu: { type: string }
+                typeContenu:
+                  type: string
+                  enum: [url, texte, email, telephone, sms, wifi, vcard, geo, pdf]
+                  description: >-
+                    Type du nouveau contenu. Déduit du contenu si absent.
                 estActif: { type: boolean }
       responses:
         '200':
@@ -464,7 +469,7 @@ paths:
 
   /q/{aliasCourt}:
     get:
-      summary: Redirection d'un QR dynamique
+      summary: Résolution d'un QR dynamique (redirection ou contenu)
       tags: [Redirection]
       security: []
       parameters:
@@ -473,16 +478,40 @@ paths:
           required: true
           schema: { type: string }
       responses:
+        '200':
+          description: >-
+            Contenu servi directement pour un QR dynamique non-URL : vCard en
+            `text/vcard` avec `Content-Disposition: attachment` (fichier
+            `.vcf`), texte/WiFi en `text/plain`. Aucun header `Location` n'est
+            émis. Si le routage contextuel est actif et qu'une variante valide
+            existe, la réponse est une redirection `302` à la place.
+          headers:
+            Content-Type:
+              schema: { type: string }
+              description: >-
+                `text/vcard; charset=utf-8` ou `text/plain; charset=utf-8`.
+            Content-Disposition:
+              schema: { type: string }
+              description: '`attachment; filename="contact.vcf"` pour une vCard.'
+          content:
+            text/vcard:
+              schema: { type: string }
+            text/plain:
+              schema: { type: string }
         '302':
           description: >-
-            Redirection vers la cible. Si le routage contextuel est actif, la
-            variante gagnante reçoit en plus `?cfq=<idVariante>` pour permettre
-            au client de mesurer une conversion (phase 3, option B).
-            Si le QR utilise une condition `minScansAppareil`/`maxScansAppareil`
-            et qu'aucun consentement n'est mémorisé, la réponse est d'abord une
-            redirection vers `/c/{aliasCourt}`.
+            Redirection vers la cible pour les types URL/PDF/email/téléphone/
+            SMS/géolocalisation, ou vers une variante de routage. Si le routage
+            contextuel est actif, la variante gagnante reçoit en plus
+            `?cfq=<idVariante>` pour permettre au client de mesurer une
+            conversion (phase 3, option B). Si le QR utilise une condition
+            `minScansAppareil`/`maxScansAppareil` et qu'aucun consentement n'est
+            mémorisé, la réponse est d'abord une redirection vers
+            `/c/{aliasCourt}`.
         '404':
-          description: Alias inconnu ou QR inactif
+          description: >-
+            Alias inconnu, QR inactif, ou destination URL invalide (aucune
+            redirection n'est émise, jamais de 500).
         '410':
           description: QR supprimé définitivement
 

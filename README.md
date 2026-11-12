@@ -242,7 +242,7 @@ Montées dans `apps/api/src/index.ts`. Auth = JWT par défaut, sauf mention.
 | `/logs` | `GET/POST` | Journal applicatif | ✅ |
 | `/preview/qr` | `GET` | Aperçu SVG public (`?content&couleur&background&size&correction`) | ❌ (rate-limit) |
 | `/r2/users/:userId/qrcodes/:filename` | `GET` | Images QR stockées (cache 1 an, sans middleware d'auth) | ❌ |
-| `/q/:aliasCourt` | `GET` | Redirection 302 + comptage scan (QR dynamiques, 404 si inactif, 410 si expiré) | ❌ |
+| `/q/:aliasCourt` | `GET` | Résolution d'un QR dynamique : redirection 302 (URL/URI) ou contenu servi (vCard `.vcf`, texte `text/plain`) + comptage scan (404 si inactif, 410 si expiré) | ❌ |
 
 ---
 
@@ -263,12 +263,16 @@ Un QR dynamique peut servir **plusieurs destinations** selon le contexte du scan
 | **Variante** | Une destination (`id` stable et immuable, libellé, URL http(s)) |
 | **Règle** | Conditions (ET) + `priorite` croissante + `varianteId` ; première correspondance gagnante |
 | **Défaut** | Variante servie quand aucune règle ne correspond |
-| **Fallback** | Config absente/corrompue → `qrcode.contenu` ; jamais de 5xx sur `/q/:alias` |
+| **Fallback** | Config absente/corrompue → contenu natif du QR (vCard servie en `.vcf`, texte en `text/plain`) ; variante non `http(s)` ignorée ; jamais de 5xx sur `/q/:alias` |
 | **Fuseau** | Celui du QR (`Africa/Brazzaville` par défaut), **jamais** celui du visiteur |
 
 Conditions supportées : `jours` (1–7), `heureMin`/`heureMax` (passage minuit géré), `pays` (ISO-2), `langues` (ISO-639-1), `appareil` (`mobile`/`tablet`/`desktop`), `minScansTotal`/`maxScansTotal`, `dates`, `villes`, `abTest` (tirage pondéré déterministe), `minScansAppareil`/`maxScansAppareil` (avec consentement).
 
-Contraintes validées à l'écriture : QR dynamique requis, ≥ 2 variantes si `actif`, priorités uniques, `defaut` existant, URL **http(s) uniquement** (`javascript:` rejeté), fuseau IANA valide.
+Contraintes validées à l'écriture : QR dynamique requis, ≥ 2 variantes si `actif`, priorités uniques, `defaut` existant, URL des **variantes** http(s) uniquement (`javascript:` rejeté), fuseau IANA valide.
+
+Le **contenu natif** d'un QR dynamique n'est pas limité aux URL : vCard, texte, WiFi, email, téléphone, SMS, géolocalisation et PDF sont acceptés. Il est validé selon son type (URL http(s), vCard complète, URI `mailto:`/`tel:`/`sms:`/`geo:`) puis servi au scan : vCard en fichier `.vcf` (`text/vcard`, `Content-Disposition: attachment`), texte/WiFi en `text/plain`, URL/URI en redirection `302`. Aucun contenu brut n'est jamais injecté dans un header `Location`.
+
+Correctif détaillé (incident `Invalid header value` sur `/q/oz4a205`) : [`doc/contextflow-qr/07_CORRECTIF_CONTENU_DYNAMIQUE.md`](./doc/contextflow-qr/07_CORRECTIF_CONTENU_DYNAMIQUE.md).
 
 Le moteur (`services/routing/resolve.ts`) est une **fonction pure** : `maintenant` injecté, zéro I/O, testé sur les fuseaux et le passage à minuit. L'écran `/dashboard/qr/:id/routage` inclut un **simulateur** qui affiche la destination servie et la trace de chaque règle.
 

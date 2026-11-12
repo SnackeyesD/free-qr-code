@@ -9,6 +9,8 @@ import {
 } from '../services/scan.js';
 import { extraireContexte } from '../services/context.js';
 import { resoudreVariante } from '../services/routing/resolve.js';
+import { construireReponseContenu } from '../services/contenu-dynamique.js';
+import { estUrlHttpSure } from '../lib/destination.js';
 import {
   COOKIE_APPAREIL,
   COOKIE_COMPTEUR,
@@ -109,19 +111,35 @@ redirectRoutes.get('/:aliasCourt', async (c) => {
   // Graine stable du tirage A/B : meme IP (/24) + meme appareil = meme variante.
   contexte.graine = `${anonymizeIp(clientInfo.ip)}|${clientInfo.userAgent}|${aliasCourt}`;
 
-  // Fallback dur : toute anomalie de configuration retombe sur le contenu
-  // d'origine. Un QR deja imprime ne doit jamais renvoyer une 5xx.
-  let destination = qrCode.contenu;
+  // Une variante de routage n'est retenue que si sa cible est une URL http(s)
+  // sure. Sinon on retombe sur le contenu natif du QR (vCard, texte, etc.).
+  let destinationVariante: string | null = null;
   let idVariante: string | null = null;
   try {
     const resolution = resoudreVariante(qrCode.configRoutage, contexte);
     if (resolution.variante) {
-      destination = ajouterParametreSuivi(resolution.variante.contenu, resolution.variante.id);
-      idVariante = resolution.variante.id;
+      if (estUrlHttpSure(resolution.variante.contenu)) {
+        destinationVariante = ajouterParametreSuivi(
+          resolution.variante.contenu,
+          resolution.variante.id,
+        );
+        idVariante = resolution.variante.id;
+      } else {
+        console.error(
+          'Routage: variante non http(s), fallback sur le contenu du QR',
+          resolution.variante.id,
+        );
+      }
     }
   } catch (err) {
     console.error('Routage: echec de resolution, fallback sur le contenu par defaut', err);
   }
+
+  // Construit la reponse AVANT d'enregistrer le scan : un contenu inutilisable
+  // (URL invalide) ne doit pas etre compte comme un scan reussi.
+  const reponse = destinationVariante
+    ? ({ type: 'redirect', destination: destinationVariante } as const)
+    : construireReponseContenu(qrCode.typeContenu, qrCode.contenu);
 
   const idAppareil =
     comptageActif && idAppareilClair
@@ -150,5 +168,18 @@ redirectRoutes.get('/:aliasCourt', async (c) => {
     }
   }
 
-  return c.redirect(destination, 302);
+  if (reponse.type === 'redirect') {
+    return c.redirect(reponse.destination, 302);
+  }
+
+  c.header('Content-Type', reponse.contentType);
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('Cache-Control', 'no-store');
+  if (reponse.nomFichier) {
+    c.header(
+      'Content-Disposition',
+      `attachment; filename="${reponse.nomFichier}"`,
+    );
+  }
+  return c.body(reponse.corps, 200);
 });

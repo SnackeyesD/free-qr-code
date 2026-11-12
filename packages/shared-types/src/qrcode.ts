@@ -67,11 +67,15 @@ export interface QRCodeInternal {
 export interface QRCodeInput {
   type: TypeQR;
   contenu: string;
+  /** Type du contenu. Déduit du contenu côté API si absent. */
+  typeContenu?: TypeContenuQR;
   design?: QRCodeDesign;
 }
 
 export interface QRCodeUpdateInput {
   contenu?: string;
+  /** Type du nouveau contenu. Déduit du contenu côté API si absent. */
+  typeContenu?: TypeContenuQR;
   estActif?: boolean;
   parametres?: QRCodeDesign;
 }

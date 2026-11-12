@@ -109,6 +109,83 @@ describe('QRCode API', () => {
     expect(body.aliasCourt).toBe(created.aliasCourt);
   });
 
+  it('POST /qrcodes accepte un QR dynamique contenant une vCard', async () => {
+    const token = await loginUser('qruser-vcard@example.com');
+    const vcard =
+      'BEGIN:VCARD\nVERSION:3.0\nFN:Gloire Messia SAYI\n' +
+      'TEL:+24206718028\nURL:https://momo-calc.getcongo.com/\nEND:VCARD';
+    const res = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: { type: 'dynamique', contenu: vcard, typeContenu: 'vcard' },
+      headers: authHeaders(token),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { typeContenu: string; contenu: string; aliasCourt: string };
+    expect(body.typeContenu).toBe('vcard');
+    expect(body.contenu).toContain('BEGIN:VCARD');
+    expect(body.contenu).toContain('URL:https://momo-calc.getcongo.com/');
+    expect(body.aliasCourt).toBeTruthy();
+  });
+
+  it('POST /qrcodes accepte un QR dynamique contenant du texte', async () => {
+    const token = await loginUser('qruser-texte@example.com');
+    const res = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: { type: 'dynamique', contenu: 'Bonjour tout le monde', typeContenu: 'texte' },
+      headers: authHeaders(token),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { typeContenu: string; contenu: string };
+    expect(body.typeContenu).toBe('texte');
+    expect(body.contenu).toBe('Bonjour tout le monde');
+  });
+
+  it('POST /qrcodes refuse une URL dynamique invalide', async () => {
+    const token = await loginUser('qruser-url-invalide@example.com');
+    const res = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: { type: 'dynamique', contenu: 'javascript:alert(1)', typeContenu: 'url' },
+      headers: authHeaders(token),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('URL http(s) invalide');
+  });
+
+  it('POST /qrcodes refuse une vCard dynamique mal formée', async () => {
+    const token = await loginUser('qruser-vcard-invalide@example.com');
+    const res = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: {
+        type: 'dynamique',
+        contenu: 'BEGIN:VCARD\nVERSION:3.0\nFN:Test',
+        typeContenu: 'vcard',
+      },
+      headers: authHeaders(token),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('vCard invalide');
+  });
+
+  it('PATCH /qrcodes/:id accepte une nouvelle vCard dynamique', async () => {
+    const token = await loginUser('qruser-vcard-update@example.com');
+    const create = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {
+      body: { type: 'dynamique', contenu: 'https://old.com', typeContenu: 'url' },
+      headers: authHeaders(token),
+    });
+    const created = (await create.json()) as { id: string };
+
+    const vcard = 'BEGIN:VCARD\nVERSION:3.0\nFN:Nouveau Contact\nEND:VCARD';
+    const res = await makeRequest(app, ctx.env, 'PATCH', `/qrcodes/${created.id}`, {
+      body: { contenu: vcard, typeContenu: 'vcard' },
+      headers: authHeaders(token),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { typeContenu: string; contenu: string };
+    expect(body.typeContenu).toBe('vcard');
+    expect(body.contenu).toContain('FN:Nouveau Contact');
+  });
+
   it('DELETE /qrcodes/:id removes a QR code', async () => {
     const token = await loginUser('qruser6@example.com');
     const create = await makeRequest(app, ctx.env, 'POST', '/qrcodes', {

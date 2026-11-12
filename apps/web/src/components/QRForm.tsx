@@ -43,6 +43,7 @@ export function QRCreateForm() {
     const input: QRCodeInput = {
       type: qrType,
       contenu: encodedContent,
+      typeContenu: contentType,
       design,
     };
 
@@ -218,6 +219,7 @@ export function QREditForm() {
     e.preventDefault();
     const result = await update({
       contenu: encodedContent || qr.contenu,
+      typeContenu: qr.typeContenu,
       parametres: design,
     });
     if (result) {

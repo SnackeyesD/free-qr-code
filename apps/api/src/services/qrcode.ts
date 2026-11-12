@@ -18,6 +18,7 @@ import {
   deleteQRImage,
 } from "../lib/r2.js";
 import { signR2Url } from "../lib/r2-signed-url.js";
+import { preparerContenuDynamique } from "./contenu-dynamique.js";
 import type {
   CreateQRCodeInput,
   UpdateQRCodeInput,
@@ -121,10 +122,17 @@ export async function createQRCode(
   const typeContenu =
     (input.typeContenu as TypeContenuQR | undefined) ||
     (detectTypeContenu(input.contenu) as TypeContenuQR);
-  const encodedContent = input.typeContenu
+  let encodedContent = input.typeContenu
     ? encodeQRContent(input.typeContenu, input.contenu)
     : input.contenu;
   const isDynamic = input.type === "dynamique";
+
+  // Un QR dynamique peut contenir une URL, une vCard, du texte, un WiFi, etc.
+  // On valide seulement que le contenu est exploitable pour son type : on ne
+  // le force surtout pas en URL.
+  if (isDynamic) {
+    encodedContent = preparerContenuDynamique(typeContenu, input.contenu);
+  }
 
   const parametres: QRCodeType["parametres"] = {
     taille: 512,
@@ -341,8 +349,11 @@ export async function updateQRCode(
 
   if (input.contenu !== undefined) {
     if (existing.est_dynamique === 1) {
-      updates.type_contenu = detectTypeContenu(input.contenu) as TypeContenuQR;
-      updates.contenu = encodeQRContent(updates.type_contenu, input.contenu);
+      const typeContenu =
+        (input.typeContenu as TypeContenuQR | undefined) ??
+        (detectTypeContenu(input.contenu) as TypeContenuQR);
+      updates.type_contenu = typeContenu;
+      updates.contenu = preparerContenuDynamique(typeContenu, input.contenu);
     } else {
       updates.contenu = input.contenu;
     }
