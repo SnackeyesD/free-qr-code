@@ -1,4 +1,5 @@
 import type { InternalId, PublicId } from "./utilisateur.js";
+import type { RoutingConfig } from "./routing.js";
 
 export type { InternalId, PublicId };
 
@@ -41,6 +42,10 @@ export interface QRCode {
   urlImage?: string;
   urlImagePng?: string;
   idModele?: PublicId;
+  /** Configuration de routage contextuel (null si désactivé). */
+  reglesRoutage?: RoutingConfig | null;
+  /** Fuseau de référence des règles horaires. */
+  fuseau?: string;
 }
 
 export interface QRCodeInternal {

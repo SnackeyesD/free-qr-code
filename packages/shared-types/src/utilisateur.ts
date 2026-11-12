@@ -3,6 +3,7 @@ export type PublicId = string;
 export type EntityId = InternalId | PublicId;
 
 export type RoleUtilisateur = 'utilisateur' | 'admin';
+export type PlanUtilisateur = 'gratuit' | 'pro';
 
 export interface Utilisateur {
   id: PublicId;
@@ -16,6 +17,9 @@ export interface Utilisateur {
   preferences?: UtilisateurPreferences;
   estActif: boolean;
   role: RoleUtilisateur;
+  /** Plan commercial. Ne jamais consulter sur le chemin de redirection. */
+  plan?: PlanUtilisateur;
+  datePassagePro?: Date | string;
 }
 
 export interface UtilisateurInput {

@@ -6,3 +6,4 @@ export * from './campagne-email.js';
 export * from './modele.js';
 export * from './cle-api.js';
 export * from './journal-et-tokens.js';
+export * from './routing.js';

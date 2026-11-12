@@ -38,6 +38,10 @@ export interface AppEnv {
     R2_PUBLIC_URL?: string;
     R2_SIGNING_SECRET?: string;
     QR_IMAGES?: R2Bucket;
+    /** "true" = routage réservé au plan Pro (jamais lu sur /q/:alias). */
+    ROUTING_PRO_ONLY?: string;
+    ROUTING_LIMITE_VARIANTES?: string;
+    ROUTING_LIMITE_REGLES?: string;
   };
   Variables: {
     userId?: string;
@@ -129,9 +133,14 @@ export interface ScanDoc {
   userAgent?: string;
   pays?: string;
   ville?: string;
+  langue?: string;
   referer?: string;
   dateScan: Date | string;
   estUnique: boolean;
+  /** Variante de routage servie (Phase 2). */
+  idVariante?: string | null;
+  /** Appareil pseudonymise, hash du cookie cfq_did (Phase 4). */
+  idAppareil?: string | null;
 }
 
 export interface StatistiquesQRCodeDoc {

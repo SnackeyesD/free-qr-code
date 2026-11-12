@@ -54,7 +54,7 @@ export default function QRDetailPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => void toggleActive()}
@@ -78,6 +78,14 @@ export default function QRDetailPage() {
           >
             Statistiques
           </Link>
+          {qr.estDynamique && (
+            <Link
+              to={`/dashboard/qr/${qr.id}/routage`}
+              className="rounded-md bg-indigo-100 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-200"
+            >
+              Routage
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => void handleDelete()}

@@ -15,6 +15,7 @@ const QRCreatePage = lazy(() => import('@/pages/QRCreatePage'));
 const QRDetailPage = lazy(() => import('@/pages/QRDetailPage'));
 const QREditPage = lazy(() => import('@/pages/QREditPage'));
 const QRStatsPage = lazy(() => import('@/pages/QRStatsPage'));
+const QRRoutingPage = lazy(() => import('@/pages/QRRoutingPage'));
 const TemplatesPage = lazy(() => import('@/pages/TemplatesPage'));
 const ApiKeysPage = lazy(() => import('@/pages/ApiKeysPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="qr/:id" element={<QRDetailPage />} />
           <Route path="qr/:id/edit" element={<QREditPage />} />
           <Route path="qr/:id/stats" element={<QRStatsPage />} />
+          <Route path="qr/:id/routage" element={<QRRoutingPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="api-keys" element={<ApiKeysPage />} />
           <Route path="settings" element={<SettingsPage />} />

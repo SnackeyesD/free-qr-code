@@ -197,6 +197,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none
 | Inscription et authentification | Créer et sécuriser le compte | Exécution du contrat (art. 6.1.b) |
 | Génération et gestion des QR codes | Fournir le service de QR codes | Exécution du contrat (art. 6.1.b) |
 | Redirection et enregistrement des scans | Fonctionnement des QR dynamiques et statistiques | Intérêt légitime (art. 6.1.f) avec anonymisation |
+| Comptage des scans par appareil | Adapter le contenu après plusieurs visites du même appareil | **Consentement explicite** (art. 6.1.a), révocable |
 | Envoi d’emails transactionnels | Confirmer l’email, réinitialiser le mot de passe | Exécution du contrat (art. 6.1.b) |
 | Campagnes marketing | Envoyer des newsletters / communications | Consentement explicite (art. 6.1.a) |
 | Tracking emails | Mesurer l’efficacité des campagnes | Consentement (art. 6.1.a) |
@@ -210,13 +211,34 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none
 - Une campagne email ne peut être envoyée qu’aux utilisateurs avec `consentementMarketing = true`.
 - Chaque email marketing contient un lien de désinscription clair.
 
+### 6.2 bis Comptage par appareil (phase 4)
+
+- **Opt-in par QR** : la fonctionnalité n'est active que si une règle du QR utilise
+  `minScansAppareil`/`maxScansAppareil`. Aucun QR ne pose de cookie sans cette condition.
+- **Bandeau avant cookie** : les cookies `cfq_did` et `cfq_c` ne sont posés qu'après un
+  clic explicite sur « Accepter » (page `/c/:alias`) ou si un consentement existe déjà.
+- **Refus aussi visible qu'accepter** : deux formulaires natifs, aucun « continuer = accepter ».
+  Le refus est mémorisé par `cfq_refus=1` (cookie strictement nécessaire, 6 mois). Le QR
+  continue de fonctionner, les règles appareil sont ignorées.
+- **Aucune donnée personnelle dans le cookie** : `cfq_did` contient un UUID aléatoire,
+  `HttpOnly`, `Secure`, `SameSite=Lax`, 13 mois maximum (recommandation CNIL).
+- **Hash en base** : seul `sha256(uuid + JWT_TRACKING_SECRET)` tronqué à 128 bits est
+  stocké (`consentements.id_appareil`, `appareils_qr.id_appareil`, `scans.id_appareil`).
+  L'UUID brut n'apparaît dans aucune table (vérifié par test).
+- **Retrait** : page `/consentement` → `date_retrait` horodatée, `scans.id_appareil`
+  remis à `NULL`, suppression des lignes `appareils_qr`. Le cookie est effacé.
+- **Pas de fingerprinting** : aucune signature d'écran, police, canvas ou autre. Un cookie
+  absent = appareil inconnu = la condition ne correspond pas.
+- **Dégradation gracieuse** : navigation privée, cookies bloqués ou refus → le scan aboutit
+  sur la variante par défaut, sans boucle (paramètre `cfq_decision` au retour).
+
 ### 6.3 Droits des personnes
 
 | Droit | Implémentation |
 |-------|----------------|
 | **Droit d’accès** | L’utilisateur consulte son profil via `/dashboard/settings`. Export possible de l’ensemble des données personnelles (évolution). |
 | **Droit de rectification** | Modification du nom, de l’email, des préférences dans l’interface. L’email modifié nécessite une nouvelle vérification. |
-| **Droit à l’effacement** | Suppression du compte sur demande. Suppression en cascade des QR, scans, clés API, sessions, tokens, campagnes associées. Les logs anonymisés peuvent être conservés. |
+| **Droit à l’effacement** | Suppression du compte sur demande. Suppression en cascade des QR, scans, clés API, sessions, tokens, campagnes associées. Les logs anonymisés peuvent être conservés. Le compteur d'appareil se retire aussi via `/consentement`. |
 | **Droit à la portabilité** | Export des données personnelles en JSON/CSV. |
 | **Droit d’opposition** | Désinscription des campagnes marketing via le lien dans chaque email ou via les paramètres. |
 | **Droit à la limitation** | Désactivation temporaire du compte ou d’un QR. |
@@ -225,10 +247,13 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none
 
 | Traitement | Données collectées | Durée de conservation | Destinataires |
 |------------|-------------------|----------------------|---------------|
-| Compte utilisateur | Email, nom, hash mot de passe, rôle, préférences, dates | **Durée de vie du compte + 1 an**, puis suppression ou anonymisation | Équipe technique, hébergeurs |
+| Compte utilisateur | Email, nom, hash mot de passe, rôle, préférences, plan commercial, dates | **Durée de vie du compte + 1 an**, puis suppression ou anonymisation | Équipe technique, hébergeurs |
 | QR codes | Contenu, type, paramètres, alias, image | **Durée de vie du compte + 1 an**, ou suppression à la demande | Hébergeurs |
-| Scans | IP anonymisée, userAgent, pays, ville, referer, date | **1 an** (TTL MongoDB), puis suppression automatique | Hébergeurs, service GeoIP |
+| Scans | IP anonymisée, userAgent, pays, ville, langue (Accept-Language), `id_variante` (identifiant technique, non personnel), `id_appareil` (hash, uniquement avec consentement), referer, date | **1 an** (purge), puis suppression automatique | Hébergeurs (aucun service GeoIP tiers) |
+| Appareils QR | Hash d'appareil, QR associé, nombre de scans, premières/dernières dates | **Tant que le consentement est actif**, supprimé au retrait | Hébergeurs |
+| Consentements comptage | Hash d'appareil, finalité, version du texte, dates de consentement/retrait | **13 mois** (preuve), puis suppression | Hébergeurs |
 | Statistiques QR | Agrégats quotidiens | **2 ans** | Équipe produit |
+| Consultations stats routage | Identifiant interne du compte, date de consultation (mesure d'adoption, sans contenu) | **2 ans** | Équipe produit |
 | Campagnes marketing | Contenu, cible, métriques | **3 ans** | Équipe marketing |
 | Tracking emails | Événements ouverture/clic | **1 an** | Équipe marketing |
 | Tokens et sessions | Hash de tokens, userAgent, IP anonymisée | **7 jours** pour refresh tokens, **24 h** pour tokens email, purge TTL | Hébergeurs |
@@ -241,12 +266,11 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none
 
 | Sous-traitant | Rôle | Mesures de sécurité |
 |---------------|------|---------------------|
-| **Cloudflare** | Hébergement edge (Workers, Pages, R2, KV), protection DDoS, WAF | HTTPS, DDoS protection, certificats TLS, politique d’accès R2 |
-| **MongoDB Atlas** | Base de données hébergée | Chiffrement au repos (M10+) et en transit (TLS), authentification, backups automatisés, réseau privé (VPC) |
+| **Cloudflare** | Hébergement edge (Workers, Pages, R2, D1), protection DDoS, WAF | HTTPS, DDoS protection, certificats TLS, politique d’accès R2, D1 chiffré au repos |
 | **SMTP maison** | Envoi d’emails transactionnels et marketing | Authentification SMTP, SPF/DKIM/DMARC, rate limiting, logs limités |
-| Service GeoIP (optionnel : ipapi.co ou auto-hébergé) | Résolution pays/ville depuis IP anonymisée | Données IP anonymisées avant envoi, accord DPA si service tiers |
+| Service GeoIP | **Aucun** : `request.cf` de Cloudflare (métadonnées de la requête edge) | Pas de transfert d'IP à un tiers ; aucune donnée à transmettre |
 
-> **Note :** Le service GeoIP est considéré comme un sous-traitant si des données IP brutes y transitent. L’anonymisation préalable réduit le risque, mais un DPA reste recommandé.
+> **Note :** La géolocalisation s'appuie uniquement sur `request.cf` (données calculées par Cloudflare au niveau du edge). Aucune IP n'est transmise à un service tiers, donc **aucun sous-traitant GeoIP** à déclarer.
 
 ---
 

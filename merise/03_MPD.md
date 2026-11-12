@@ -2,6 +2,8 @@
 
 ## Contexte
 
+> **Implémentation réelle : Cloudflare D1 (SQLite), pas MongoDB.** Les scripts MongoDB ci-dessous sont conservés comme historique de conception ; la source de vérité est `apps/api/migrations/*.sql` (voir `merise/10_ARCHITECTURE.md`). En cas d'écart, c'est la migration SQL qui fait foi.
+
 Le MPD fournit les schémas physiques et scripts exécutables pour MongoDB, en cohérence avec le MLD. Cloudflare Workers (via `wrangler`) accèdera à MongoDB Atlas via le driver MongoDB compatible edge (`mongodb` v6+ ou `mongoose` si bundlé).
 
 ---
@@ -47,7 +49,11 @@ async function initDb(uri, dbName) {
           dateDerniereConnexion: { bsonType: 'date' },
           preferences: { bsonType: 'object' },
           estActif: { bsonType: 'bool' },
-          role: { enum: ['utilisateur', 'admin'] }
+          role: { enum: ['utilisateur', 'admin'] },
+          // Couture de monetisation (migration D1 005) : ne jamais lire sur
+          // le chemin chaud de la redirection.
+          plan: { enum: ['gratuit', 'pro'] },
+          datePassagePro: { bsonType: ['date', 'null'] }
         }
       }
     }
@@ -72,7 +78,11 @@ async function initDb(uri, dbName) {
           dateExpiration: { bsonType: 'date' },
           nombreScansTotal: { bsonType: 'int', minimum: 0 },
           urlImage: { bsonType: 'string' },
-          idModele: { bsonType: 'objectId' }
+          idModele: { bsonType: 'objectId' },
+          // Routage contextuel (migration D1 002) : JSON validé côté application.
+          reglesRoutage: { bsonType: ['object', 'null'] },
+          // Fuseau de référence des règles horaires, propre au QR.
+          fuseau: { bsonType: 'string' }
         }
       }
     }
@@ -80,6 +90,26 @@ async function initDb(uri, dbName) {
   await db.collection('qrcodes').createIndex({ idUtilisateur: 1, dateCreation: -1 });
   await db.collection('qrcodes').createIndex({ aliasCourt: 1 }, { unique: true, sparse: true });
   await db.collection('qrcodes').createIndex({ estDynamique: 1, aliasCourt: 1 });
+
+  // Colonnes ajoutees par apps/api/migrations/002_routing.sql (D1) :
+  //   regles_routage TEXT NULL          -> RoutingConfig JSON (variantes + regles)
+  //   fuseau         TEXT NOT NULL      -> defaut 'Africa/Brazzaville'
+  // La config est lue sans jointure sur le chemin chaud de /q/:alias ; les
+  // identifiants de variantes sont stables et referencent scans.id_variante.
+  //
+  // Migration D1 004 (phase 4) :
+  //   appareils_qr (id_appareil, id_qrcode, nombre_scans, premier_scan, dernier_scan)
+  //     -> agregat d'audit, id_appareil = hash tronque du cookie cfq_did
+  //   consentements (id_appareil, finalite, version_texte, date_consentement, date_retrait)
+  //     -> preuve de consentement, jamais l'UUID brut
+  //   scans.id_appareil TEXT NULL
+  //     -> attribution appareil uniquement avec consentement ; NULL apres retrait
+  //
+  // Migration D1 005 (phase 5) :
+  //   utilisateurs.plan TEXT NOT NULL DEFAULT 'gratuit' (CHECK gratuit|pro)
+  //   utilisateurs.date_passage_pro TEXT NULL
+  //   routage_consultations_stats (id_utilisateur, date_consultation)
+  //     -> comptage de l'interet pour les stats, aucune donnee personnelle
 
   // Collection scans
   await db.createCollection('scans', {
@@ -95,7 +125,14 @@ async function initDb(uri, dbName) {
           ville: { bsonType: 'string' },
           referer: { bsonType: 'string' },
           dateScan: { bsonType: 'date' },
-          estUnique: { bsonType: 'bool' }
+          estUnique: { bsonType: 'bool' },
+          // Analytics de routage (migration D1 003) : id technique de variante,
+          // et langue negociee depuis Accept-Language.
+          langue: { bsonType: 'string' },
+          idVariante: { bsonType: ['string', 'null'] },
+          // Phase 4 : hash de l'appareil consenti (migration D1 004).
+          // NULL = pas de consentement ou consentement retire.
+          idAppareil: { bsonType: ['string', 'null'] }
         }
       }
     }
