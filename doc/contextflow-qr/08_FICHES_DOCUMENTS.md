@@ -1,7 +1,7 @@
 # Fiches QR — documents structurés et portables
 
 **Date :** 2026-11-12
-**Statut :** 📝 proposition — en attente de validation avant implémentation
+**Statut :** ✅ implémenté P0–P2 (hébergé) — 2026-11-13, non encore déployé
 **Périmètre :** nouveau type de contenu « Fiche » (document à champs libres), rendu par le frontend.
 
 ---
@@ -476,3 +476,47 @@ ce qui est vu est exactement ce qui sera publié.
 | 6 | Impression PDF | Via impression navigateur, pas de génération serveur |
 
 Une fois ces points validés (ou ajustés), l'implémentation démarre par **P0**.
+
+---
+
+## 16. État d'implémentation (2026-11-13)
+
+**Livré — P0 (API) :**
+
+- Migration additive `apps/api/migrations/006_fiches.sql` (tables `fiches`,
+  `fiches_modeles`, colonne `qrcodes.id_fiche`). Aucun changement de l'enum
+  `type_contenu` ni de `redirect.ts`.
+- Types partagés `packages/shared-types/src/fiche.ts`.
+- CRUD authentifié `/fiches` et `/fiches/modeles`, validation par type de champ,
+  snapshot du schéma, ownership, suppression `409` si un QR est lié.
+- Route publique `GET /public/fiches/:publicId` (`404`/`410`, `Cache-Control: no-store`).
+- `POST /qrcodes { idFiche }` : URL construite côté serveur, `type_contenu = 'url'`,
+  QR dynamique, refus si fiche incomplète ou archivée. `PATCH` peut délier (`null`).
+- Tests API : `apps/api/tests/fiches.test.ts` ; suite complète **185 tests verts**.
+
+**Livré — P1/P2 (frontend) :**
+
+- `FicheRenderer` (rendu unique aperçu + public), `FicheBuilder`,
+  `FicheValuesForm`, validation client alignée sur l'API.
+- Pages `/dashboard/fiches`, `/dashboard/fiches/new`,
+  `/dashboard/fiches/:id/edit` et rendu public `/d/:publicId`.
+- Création d'un QR depuis la liste des fiches ou l'éditeur (sauvegarde puis
+  création, redirection vers le QR).
+- Affiche de la fiche liée dans `QRDetailPage` (titre, révision, statut, liens).
+- Modèles utilisables comme point de départ ; « enregistrer ce schéma comme
+  modèle » depuis l'éditeur. Pas encore de page dédiée `/dashboard/fiches/modeles`.
+- `/d/:publicId` : `noindex, nofollow`, `robots.txt` (`Disallow: /d/`), impression
+  navigateur, aucun traceur ni appel tiers.
+
+**Reste à faire :**
+
+- P3 (export/import JSON, payload embarqué `#z=…`) et P4 (médias R2).
+- Déploiement : appliquer la migration **distante** puis déployer l'API et le web :
+  ```bash
+  npx wrangler d1 migrations apply free-qr-api-db --remote
+  pnpm --filter @free-qr/api deploy
+  pnpm --filter @free-qr/web build   # puis publication du dossier dist/
+  ```
+- Vérifier le fallback SPA de l'hébergement statique pour les liens profonds
+  `/d/<uuid>` (un scan ouvre directement cette URL).
+

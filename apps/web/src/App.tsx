@@ -16,6 +16,8 @@ const QRDetailPage = lazy(() => import('@/pages/QRDetailPage'));
 const QREditPage = lazy(() => import('@/pages/QREditPage'));
 const QRStatsPage = lazy(() => import('@/pages/QRStatsPage'));
 const QRRoutingPage = lazy(() => import('@/pages/QRRoutingPage'));
+const FichesPage = lazy(() => import('@/pages/FichesPage'));
+const FicheEditPage = lazy(() => import('@/pages/FicheEditPage'));
 const TemplatesPage = lazy(() => import('@/pages/TemplatesPage'));
 const ApiKeysPage = lazy(() => import('@/pages/ApiKeysPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -31,6 +33,7 @@ const FeaturesPage = lazy(() => import('@/pages/FeaturesPage'));
 const PricingPage = lazy(() => import('@/pages/PricingPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const TermsPage = lazy(() => import('@/pages/TermsPage'));
+const FichePubliquePage = lazy(() => import('@/pages/FichePubliquePage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 const ForbiddenPage = lazy(() => import('@/pages/ForbiddenPage'));
 const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage'));
@@ -69,6 +72,9 @@ export default function App() {
           <Route path="qr/:id/edit" element={<QREditPage />} />
           <Route path="qr/:id/stats" element={<QRStatsPage />} />
           <Route path="qr/:id/routage" element={<QRRoutingPage />} />
+          <Route path="fiches" element={<FichesPage />} />
+          <Route path="fiches/new" element={<FicheEditPage />} />
+          <Route path="fiches/:id/edit" element={<FicheEditPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="api-keys" element={<ApiKeysPage />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -91,6 +97,8 @@ export default function App() {
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="metrics" element={<AdminMetricsPage />} />
         </Route>
+
+        <Route path="/d/:publicId" element={<FichePubliquePage />} />
 
         <Route path="/401" element={<PublicLayout><UnauthorizedPage /></PublicLayout>} />
         <Route path="/403" element={<PublicLayout><ForbiddenPage /></PublicLayout>} />
