@@ -32,19 +32,54 @@ const designSchema: z.ZodType<QRCodeDesign> = z
   })
   .catchall(z.unknown());
 
-export const createQRCodeSchema = z.object({
-  type: z.enum(["statique", "dynamique"]),
-  contenu: z.string().min(1).max(4096),
-  typeContenu: z.enum(typeContenuValues).optional(),
-  design: designSchema.optional(),
-});
+export const createQRCodeSchema = z
+  .object({
+    type: z.enum(["statique", "dynamique"]).optional(),
+    contenu: z.string().max(4096).optional(),
+    typeContenu: z.enum(typeContenuValues).optional(),
+    /** Crée un QR dynamique pointant vers la page de rendu de la fiche. */
+    idFiche: z.string().uuid().optional(),
+    design: designSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.idFiche && data.contenu !== undefined && data.contenu.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contenu"],
+        message: "Fournissez contenu ou idFiche, pas les deux",
+      });
+    }
+    if (!data.idFiche && (!data.contenu || data.contenu.trim().length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contenu"],
+        message: "Le contenu est requis",
+      });
+    }
+  });
 
-export const updateQRCodeSchema = z.object({
-  contenu: z.string().min(1).max(4096).optional(),
-  typeContenu: z.enum(typeContenuValues).optional(),
-  estActif: z.boolean().optional(),
-  parametres: designSchema.optional(),
-});
+export const updateQRCodeSchema = z
+  .object({
+    contenu: z.string().min(1).max(4096).optional(),
+    typeContenu: z.enum(typeContenuValues).optional(),
+    /** Lie (ou délie avec `null`) une fiche au QR. */
+    idFiche: z.string().uuid().nullable().optional(),
+    estActif: z.boolean().optional(),
+    parametres: designSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.idFiche !== undefined &&
+      data.idFiche !== null &&
+      data.contenu !== undefined
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contenu"],
+        message: "Fournissez contenu ou idFiche, pas les deux",
+      });
+    }
+  });
 
 export const listQRCodesSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

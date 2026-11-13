@@ -19,6 +19,10 @@ import {
 } from "../lib/r2.js";
 import { signR2Url } from "../lib/r2-signed-url.js";
 import { preparerContenuDynamique } from "./contenu-dynamique.js";
+import {
+  chargerFichePourQr,
+  construireUrlPublique,
+} from "./fiche.js";
 import type {
   CreateQRCodeInput,
   UpdateQRCodeInput,
@@ -32,6 +36,7 @@ export interface QRCodeRow {
   public_id: string;
   id_utilisateur: number;
   id_modele: number | null;
+  id_fiche: number | null;
   contenu: string;
   type_contenu: TypeContenuQR;
   est_dynamique: number;
@@ -70,6 +75,18 @@ async function toPublicQR(
   env: AppEnv["Bindings"],
   row: QRCodeRow,
 ): Promise<QRCodeType> {
+  // `qrcodes.id_fiche` est la clé interne ; l'API expose le `public_id`
+  // (UUID) utilisé par le frontend.
+  let idFiche: string | undefined;
+  if (row.id_fiche) {
+    const ficheRow = await d1First<{ public_id: string }>(
+      env,
+      "SELECT public_id FROM fiches WHERE id = ?",
+      row.id_fiche,
+    );
+    idFiche = ficheRow?.public_id;
+  }
+
   return {
     id: String(row.id),
     idUtilisateur: String(row.id_utilisateur),
@@ -86,6 +103,7 @@ async function toPublicQR(
       ? await signR2Url(env, row.url_image)
       : undefined,
     idModele: row.id_modele ? String(row.id_modele) : undefined,
+    idFiche,
   };
 }
 
@@ -119,19 +137,39 @@ export async function createQRCode(
   }
 
   const now = new Date().toISOString();
-  const typeContenu =
-    (input.typeContenu as TypeContenuQR | undefined) ||
-    (detectTypeContenu(input.contenu) as TypeContenuQR);
-  let encodedContent = input.typeContenu
-    ? encodeQRContent(input.typeContenu, input.contenu)
-    : input.contenu;
-  const isDynamic = input.type === "dynamique";
+  let typeContenu: TypeContenuQR;
+  let encodedContent: string;
+  let isDynamic: boolean;
+  let idFiche: number | null = null;
 
-  // Un QR dynamique peut contenir une URL, une vCard, du texte, un WiFi, etc.
-  // On valide seulement que le contenu est exploitable pour son type : on ne
-  // le force surtout pas en URL.
-  if (isDynamic) {
-    encodedContent = preparerContenuDynamique(typeContenu, input.contenu);
+  if (input.idFiche) {
+    // Le serveur construit lui-même l'URL : on ne fait jamais confiance à une
+    // URL de fiche fournie par le client.
+    const fiche = await chargerFichePourQr(env, userId, input.idFiche);
+    typeContenu = "url";
+    encodedContent = construireUrlPublique(env, fiche.publicId);
+    isDynamic = true;
+    idFiche = fiche.idInterne;
+  } else {
+    const contenu = input.contenu;
+    if (!contenu) {
+      throw new HTTPException(400, { message: "Le contenu est requis" });
+    }
+
+    typeContenu =
+      (input.typeContenu as TypeContenuQR | undefined) ||
+      (detectTypeContenu(contenu) as TypeContenuQR);
+    encodedContent = input.typeContenu
+      ? encodeQRContent(input.typeContenu, contenu)
+      : contenu;
+    isDynamic = input.type === "dynamique";
+
+    // Un QR dynamique peut contenir une URL, une vCard, du texte, un WiFi, etc.
+    // On valide seulement que le contenu est exploitable pour son type : on ne
+    // le force surtout pas en URL.
+    if (isDynamic) {
+      encodedContent = preparerContenuDynamique(typeContenu, contenu);
+    }
   }
 
   const parametres: QRCodeType["parametres"] = {
@@ -144,7 +182,6 @@ export async function createQRCode(
   const aliasCourt = isDynamic ? await ensureUniqueAlias(env) : null;
   const baseUrl =
     env.API_BASE_URL?.replace(/\/$/, "") ?? "https://api.free-qrcode.app";
-  console.log("l'en", env.API_BASE_URL);
   const qrContent =
     isDynamic && aliasCourt ? `${baseUrl}/q/${aliasCourt}` : encodedContent;
 
@@ -156,12 +193,14 @@ export async function createQRCode(
   const qrId = await d1Insert(
     env,
     `INSERT INTO qrcodes (
-      public_id, id_utilisateur, id_modele, contenu, type_contenu, est_dynamique,
-      alias_court, parametres, est_actif, date_creation, nombre_scans_total, url_image
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      public_id, id_utilisateur, id_modele, id_fiche, contenu, type_contenu,
+      est_dynamique, alias_court, parametres, est_actif, date_creation,
+      nombre_scans_total, url_image
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     publicId,
     idUtilisateur,
     idModele,
+    idFiche,
     encodedContent,
     typeContenu,
     isDynamic ? 1 : 0,
@@ -200,6 +239,7 @@ export async function createQRCode(
     public_id: publicId,
     id_utilisateur: idUtilisateur,
     id_modele: idModele,
+    id_fiche: idFiche,
     contenu: encodedContent,
     type_contenu: typeContenu,
     est_dynamique: isDynamic ? 1 : 0,
@@ -225,8 +265,6 @@ export async function listQRCodes(
   hasNext: boolean;
 }> {
   const idUtilisateur = Number(userId);
-  console.log("L'autre");
-  console.log(idUtilisateur);
   if (!Number.isFinite(idUtilisateur)) {
     throw new HTTPException(400, { message: "Invalid user id" });
   }
@@ -346,6 +384,22 @@ export async function updateQRCode(
   const updates: Partial<QRCodeRow> = {};
   const updateFields: string[] = [];
   const updateParams: D1BindValue[] = [];
+
+  if (input.idFiche !== undefined) {
+    if (existing.est_dynamique !== 1) {
+      throw new HTTPException(400, {
+        message: "Un QR statique ne peut pas être lié à une fiche",
+      });
+    }
+    if (input.idFiche === null) {
+      updates.id_fiche = null;
+    } else {
+      const fiche = await chargerFichePourQr(env, userId, input.idFiche);
+      updates.id_fiche = fiche.idInterne;
+      updates.type_contenu = "url";
+      updates.contenu = construireUrlPublique(env, fiche.publicId);
+    }
+  }
 
   if (input.contenu !== undefined) {
     if (existing.est_dynamique === 1) {

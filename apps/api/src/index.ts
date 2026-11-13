@@ -7,6 +7,8 @@ import {
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/user.js";
 import { qrCodeRoutes } from "./routes/qrcode.js";
+import { ficheRoutes } from "./routes/fiche.js";
+import { fichePubliqueRoutes } from "./routes/fiche-publique.js";
 import { routingRoutes } from "./routes/routing.js";
 import { redirectRoutes } from "./routes/redirect.js";
 import { consentRoutes, consentementRoutes } from "./routes/consent.js";
@@ -31,6 +33,8 @@ app.get("/health", (c) => c.json({ status: "ok" }));
 
 app.route("/auth", authRoutes);
 app.route("/qrcodes", qrCodeRoutes);
+app.route("/fiches", ficheRoutes);
+app.route("/public/fiches", fichePubliqueRoutes);
 app.route("/qrcodes", routingRoutes);
 app.route("/qrcodes", statsRoutes);
 app.route("/r2", r2Routes);

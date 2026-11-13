@@ -7,3 +7,4 @@ export * from './modele.js';
 export * from './cle-api.js';
 export * from './journal-et-tokens.js';
 export * from './routing.js';
+export * from './fiche.js';
