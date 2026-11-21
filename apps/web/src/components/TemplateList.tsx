@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { ModeleQR, TypeContenuQR } from '@free-qr/shared-types';
- import { buildPreviewUrl } from '@/lib/qrPreview';
+import { buildTemplatePreviewUrl } from '@/lib/qrPreview';
 
 
 interface TemplateListProps {
@@ -46,7 +46,7 @@ interface TemplateCardProps {
 
 function TemplateCard({ template, onDelete }: TemplateCardProps) {
   const previewUrl = useMemo(() => {
-    return buildPreviewUrl('https://example.com', template.parametresParDefaut, template.parametresParDefaut?.taille ?? 300);
+    return buildTemplatePreviewUrl(template, template.parametresParDefaut?.taille ?? 300);
   }, [template]);
 
   return (

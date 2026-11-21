@@ -15,6 +15,7 @@ Routage contextuel des QR dynamiques : un seul QR imprimé, plusieurs destinatio
 | 06 | [`06_PHASE_5_MONETISATION.md`](./06_PHASE_5_MONETISATION.md) | `plan`, flag Pro, quotas, métriques d'adoption | ~2 j | ✅ |
 | 07 | [`07_CORRECTIF_CONTENU_DYNAMIQUE.md`](./07_CORRECTIF_CONTENU_DYNAMIQUE.md) | Correctif `Invalid header value` : vCard servie en `.vcf`, contenu dynamique non limité aux URL | — | ✅ déployé |
 | 08 | [`08_FICHES_DOCUMENTS.md`](./08_FICHES_DOCUMENTS.md) | Fiches : modèles de champs libres, document ou carte de visite rendu par le frontend, mode hébergé puis portable | ~9–13 j | ✅ P0–P2 + cartes de visite implémentés |
+| 09 | [`09_GALERIE_MODELES_PUBLICS.md`](./09_GALERIE_MODELES_PUBLICS.md) | Galerie `/dashboard/templates`, endpoint public en lecture seule, préremplissage du formulaire QR | ~1 j | ✅ implémenté |
 
 ## Ordre d'exécution
 
@@ -30,6 +31,8 @@ Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 5
 - **5** peut être faite n'importe quand après 1.
 - **8 (Fiches)** est une feature satellite : elle ne dépend d'aucune phase ContextFlow et
   ne modifie pas le runtime de redirection. Voir [`08_FICHES_DOCUMENTS.md`](./08_FICHES_DOCUMENTS.md).
+- **9 (Galerie de modèles)** est également satellite : lecture de `modeles`, aucun impact
+  sur le runtime `/q/:alias`. Voir [`09_GALERIE_MODELES_PUBLICS.md`](./09_GALERIE_MODELES_PUBLICS.md).
 
 ## Décisions verrouillées
 

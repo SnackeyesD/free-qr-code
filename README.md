@@ -42,6 +42,9 @@ free-qr-code/
 │   │   │   │   │                      verify-email, forgot-password, reset-password)
 │   │   │   │   ├── user.ts          # /me, /me/health, /me/sessions* (profil + mot de passe)
 │   │   │   │   ├── qrcode.ts        # /qrcodes/* (CRUD + download, JWT ou clé API)
+│   │   │   │   ├── fiche.ts         # /fiches/* + /fiches/modeles (documents structurés)
+│   │   │   │   ├── fiche-publique.ts # /public/fiches/:id (+ export vCard)
+│   │   │   │   ├── templates.ts     # /templates/publics (galerie en lecture seule)
 │   │   │   │   ├── stats.ts         # /qrcodes/:id/stats (permission stats:read)
 │   │   │   │   ├── api-keys.ts      # /api-keys/* (CRUD, JWT uniquement)
 │   │   │   │   ├── dashboard.ts     # /dashboard, /admin/dashboard (stats agrégées)
@@ -64,25 +67,29 @@ free-qr-code/
 │   │   ├── tests/                   # Vitest (better-sqlite3) : auth, user, qrcode,
 │   │   │                            #   qrcode-image, scan-utils, scan-record, context,
 │   │   │                            #   api-keys, routing (resolve / api / redirect),
-│   │   │                            #   appareil-consent (phase 4)
+│   │   │                            #   appareil-consent (phase 4), fiches,
+│   │   │                            #   templates publics
 │   │   ├── migrations/
 │   │   │   ├── 001_initial_schema.sql  # Schéma D1 (12 tables + vues)
 │   │   │   ├── 002_routing.sql         # Colonnes regles_routage + fuseau
 │   │   │   ├── 003_routing_analytics.sql # scans.id_variante + langue + index
 │   │   │   ├── 004_appareil_consentement.sql # appareils_qr + consentements + scans.id_appareil
-│   │   │   └── 005_plans.sql           # plan utilisateur + consultations stats routage
+│   │   │   ├── 005_plans.sql           # plan utilisateur + consultations stats routage
+│   │   │   ├── 006_fiches.sql          # fiches + fiches_modeles + qrcodes.id_fiche
+│   │   │   └── 007_modeles_publics.sql # presets de design publics de la galerie
 │   │   └── wrangler.toml            # Config Cloudflare Worker (+ [[services]] email)
 │   └── web/               # Frontend React + Vite
 │       ├── src/
 │       │   ├── App.tsx              # Router principal (public / dashboard / admin)
 │       │   ├── lib/                 # api.ts (axios + refresh auto), qrApi.ts,
 │       │   │                        #   userApi.ts, qrPreview.ts, apiKeysApi.ts,
-│       │   │                        #   dashboardApi.ts, adminApi.ts, sessionsApi.ts, qrForm.ts
+│       │   │                        #   dashboardApi.ts, adminApi.ts, sessionsApi.ts, qrForm.ts,
+│       │   │                        #   ficheApi.ts, templatesApi.ts
 │       │   ├── contexts/            # AuthContext
 │       │   ├── hooks/               # useQR, useQRList, useQRCreate, useQRStats,
 │       │   │                        #   useSettings, useSessions, useApiKeys, useRouting,
 │       │   │                        #   useDashboardStats, useCampaigns, useTemplates,
-│       │   │                        #   useUsers, useReveal
+│       │   │                        #   usePublicTemplates, useFiches, useUsers, useReveal
 │       │   ├── components/          # Logo, QRCodeList, QRForm, QRPreview, HeroShowcase,
 │       │   │                        #   routing/ (RoutingEditor, ConditionFields,
 │       │   │                        #   RoutingSimulator), CampaignForm/List, TemplateForm…
@@ -216,6 +223,7 @@ Mot de passe : changement connecté via `PATCH /me` (`motDePasseActuel` + `nouve
 | `/qrcodes/:id` | `GET/PATCH/DELETE` | Read / update / delete | ✅ |
 | `/qrcodes/:id/stats` | `GET` | Scan statistics | ✅ |
 | `/admin/campaigns` `/admin/templates` | CRUD + `/send` | Email campaigns, QR templates | ✅ admin |
+| `/templates/publics` `/templates/publics/:id` | `GET` | Public QR template gallery | ✅ |
 | `/tracking/pixel` `/tracking/click` | `GET` | Email open/click tracking | ❌ |
 | `/q/:shortAlias` | `GET` | Public short link → 302 + scan event | ❌ |
 
@@ -262,13 +270,24 @@ Montées dans `apps/api/src/index.ts`. Auth = JWT par défaut, sauf mention.
 | `/admin/campaigns` | `GET/POST` | Campagnes email | ✅ admin |
 | `/admin/campaigns/:id` | `GET/PATCH` | Détail / maj campagne | ✅ admin |
 | `/admin/campaigns/:id/send` | `POST` | Envoyer (via `SMTP_API_URL`) | ✅ admin |
-| `/admin/templates` | `GET/POST` | Modèles QR | ✅ admin |
+| `/admin/templates` | `GET/POST` | Modèles QR (admin) | ✅ admin |
 | `/admin/templates/:id` | `GET/PATCH/DELETE` | Détail / maj / suppression | ✅ admin |
+| `/templates/publics` | `GET` | Galerie des modèles publics (`est_public = 1`, sans données internes) | ✅ (rate-limit) |
+| `/templates/publics/:publicId` | `GET` | Détail d'un modèle public par `public_id` | ✅ (rate-limit) |
 | `/tracking/pixel`, `/tracking/click` | `GET` | Ouverture / clic email | ❌ |
 | `/logs` | `GET/POST` | Journal applicatif | ✅ |
 | `/preview/qr` | `GET` | Aperçu SVG public (`?content&couleur&background&size&correction`) | ❌ (rate-limit) |
 | `/r2/users/:userId/qrcodes/:filename` | `GET` | Images QR stockées (cache 1 an, sans middleware d'auth) | ❌ |
 | `/q/:aliasCourt` | `GET` | Résolution d'un QR dynamique : redirection 302 (URL/URI) ou contenu servi (vCard `.vcf`, texte `text/plain`) + comptage scan (404 si inactif, 410 si expiré) | ❌ |
+
+### Galerie de modèles publics
+
+`/dashboard/templates` liste les modèles `est_public = 1` via `/templates/publics`. Le
+bouton « Utiliser ce modèle » ouvre `/dashboard/qr/new?modele=<public_id>` : le type de
+contenu et le design sont préremplis, **le contenu reste à saisir**. Les modèles privés et
+les données internes (id technique, propriétaire) ne sont jamais exposés.
+
+Détail : [`doc/contextflow-qr/09_GALERIE_MODELES_PUBLICS.md`](./doc/contextflow-qr/09_GALERIE_MODELES_PUBLICS.md).
 
 ---
 

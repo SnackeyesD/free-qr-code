@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { QRCodeInput } from '@free-qr/shared-types';
+import type { ModeleQR, QRCodeInput } from '@free-qr/shared-types';
 import { useQR } from '@/hooks/useQR';
 import { useQRCreate } from '@/hooks/useQRCreate';
 import { QRPreview, QRDesignPanel } from '@/components/QRPreview';
@@ -10,7 +10,12 @@ import {
   QR_TYPES,
 } from '@/lib/qrForm';
 
-export function QRCreateForm() {
+interface QRCreateFormProps {
+  /** Modèle public dont on préremplit le type de contenu et le design. */
+  template?: ModeleQR | null;
+}
+
+export function QRCreateForm({ template = null }: QRCreateFormProps) {
   const navigate = useNavigate();
   const { create, isLoading: isCreating, error, resetError } = useQRCreate();
   const {
@@ -27,7 +32,11 @@ export function QRCreateForm() {
     encodedContent,
     fields,
     isValid,
-  } = useQRForm('url', 'dynamique');
+  } = useQRForm(
+    template?.typeContenu ?? 'url',
+    'dynamique',
+    template?.parametresParDefaut,
+  );
 
   useEffect(() => {
     if (error) {

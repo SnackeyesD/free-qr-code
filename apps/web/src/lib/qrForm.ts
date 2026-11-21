@@ -140,11 +140,18 @@ export function encodeContent(type: TypeContenuQR, values: Record<string, string
   }
 }
 
-export function useQRForm(defaultType: TypeContenuQR = 'url', defaultTypeQR: TypeQR = 'dynamique') {
+export function useQRForm(
+  defaultType: TypeContenuQR = 'url',
+  defaultTypeQR: TypeQR = 'dynamique',
+  initialDesign?: QRCodeDesign,
+) {
   const [contentType, setContentType] = useState<TypeContenuQR>(defaultType);
   const [qrType, setQrType] = useState<TypeQR>(defaultTypeQR);
   const [values, setValues] = useState<Record<string, string>>({});
-  const [design, setDesign] = useState<QRCodeDesign>(DEFAULT_DESIGN);
+  const [design, setDesign] = useState<QRCodeDesign>({
+    ...DEFAULT_DESIGN,
+    ...(initialDesign ?? {}),
+  });
   const [alias, setAlias] = useState('');
 
   const fields = CONTENT_FIELDS[contentType];

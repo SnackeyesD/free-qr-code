@@ -466,6 +466,62 @@ export async function listTemplates(env: AppEnv['Bindings']): Promise<{ data: Mo
   return { data: rows.map(toPublicTemplate), total: countRow?.total ?? 0 };
 }
 
+/**
+ * Modèle exposé dans la galerie : identifiant public uniquement, jamais
+ * l'identifiant interne ni le propriétaire du modèle.
+ */
+function toGalleryTemplate(row: ModeleRow): ModeleQR {
+  return {
+    id: row.public_id,
+    nom: row.nom,
+    description: row.description ?? undefined,
+    typeContenu: row.type_contenu as TypeContenuQR,
+    parametresParDefaut: safeParseJson(row.parametres_par_defaut, {}),
+    estPublic: true,
+    dateCreation: row.date_creation,
+  };
+}
+
+/**
+ * Galerie visible par tous les utilisateurs connectés. On n'expose ni
+ * l'identifiant interne du propriétaire ni les modèles privés.
+ */
+export async function listPublicTemplates(
+  env: AppEnv['Bindings']
+): Promise<{ data: ModeleQR[]; total: number }> {
+  const rows = await d1All<ModeleRow>(
+    env,
+    `SELECT id, public_id, id_utilisateur, nom, description, type_contenu, parametres_par_defaut, est_public, date_creation
+     FROM modeles
+     WHERE est_public = 1
+     ORDER BY date_creation DESC, id DESC
+     LIMIT 200`
+  );
+  const countRow = await d1First<{ total: number }>(
+    env,
+    `SELECT COUNT(*) AS total FROM modeles WHERE est_public = 1`
+  );
+  return {
+    data: rows.map(toGalleryTemplate),
+    total: countRow?.total ?? 0,
+  };
+}
+
+export async function getPublicTemplate(
+  env: AppEnv['Bindings'],
+  publicId: string
+): Promise<ModeleQR> {
+  const row = await d1First<ModeleRow>(
+    env,
+    `SELECT id, public_id, id_utilisateur, nom, description, type_contenu, parametres_par_defaut, est_public, date_creation
+     FROM modeles
+     WHERE public_id = ? AND est_public = 1`,
+    publicId
+  );
+  if (!row) throw new HTTPException(404, { message: 'Modèle public non trouvé' });
+  return toGalleryTemplate(row);
+}
+
 export interface CreateTemplateInput {
   nom: string;
   description?: string;
