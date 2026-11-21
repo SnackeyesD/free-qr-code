@@ -11,9 +11,7 @@ const registerSchema = z
     email: z.string().email('Email invalide'),
     motDePasse: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
     confirmation: z.string().min(1, 'Veuillez confirmer le mot de passe'),
-    consentementMarketing: z.boolean().refine((v) => v === true, {
-      message: 'Le consentement est obligatoire pour utiliser le service',
-    }),
+    consentementMarketing: z.boolean(),
   })
   .refine((data) => data.motDePasse === data.confirmation, {
     message: 'Les mots de passe ne correspondent pas',
@@ -165,18 +163,11 @@ export default function RegisterPage() {
               type="checkbox"
               {...register('consentementMarketing')}
               className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              aria-invalid={errors.consentementMarketing ? 'true' : 'false'}
-              aria-describedby={errors.consentementMarketing ? 'consent-error' : undefined}
             />
             <label htmlFor="consentementMarketing" className="text-sm text-gray-700">
-              J'accepte de recevoir les emails marketing (obligatoire pour utiliser le service)
+              J'accepte de recevoir les emails marketing (optionnel — vous pouvez changer d'avis à tout moment dans les paramètres)
             </label>
           </div>
-          {errors.consentementMarketing && (
-            <p id="consent-error" className="text-sm text-red-600">
-              {errors.consentementMarketing.message}
-            </p>
-          )}
 
           <button
             type="submit"

@@ -6,6 +6,7 @@ import { Logo } from '@/components/Logo';
 const navItems = [
   { to: '/dashboard', label: "Vue d'ensemble" },
   { to: '/dashboard/qr', label: 'Mes QR codes' },
+  { to: '/dashboard/fiches', label: 'Mes fiches' },
   { to: '/dashboard/qr/new', label: "Créer un QR" },
   { to: '/dashboard/templates', label: 'Modèles publics' },
   { to: '/dashboard/api-keys', label: 'Clés API' },

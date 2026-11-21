@@ -1,12 +1,43 @@
+import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import type { Fiche } from "@free-qr/shared-types";
 import { QRPreview } from "@/components/QRPreview";
 import { useQR } from "@/hooks/useQR";
+import { ficheApi, ficheErrorMessage } from "@/lib/ficheApi";
 
 export default function QRDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { qr, isLoading, error, remove, downloadImage, toggleActive } =
     useQR(id);
+
+  const [ficheLiee, setFicheLiee] = useState<Fiche | null>(null);
+  const [ficheError, setFicheError] = useState<string | null>(null);
+  const idFiche = qr?.idFiche;
+
+  useEffect(() => {
+    if (!idFiche) {
+      setFicheLiee(null);
+      setFicheError(null);
+      return;
+    }
+
+    let cancelled = false;
+    ficheApi
+      .getById(idFiche)
+      .then((data) => {
+        if (!cancelled) setFicheLiee(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setFicheError(ficheErrorMessage(err, "Fiche liée introuvable"));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [idFiche]);
 
   if (isLoading) {
     return (
@@ -54,7 +85,7 @@ export default function QRDetailPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => void toggleActive()}
@@ -78,6 +109,14 @@ export default function QRDetailPage() {
           >
             Statistiques
           </Link>
+          {qr.estDynamique && (
+            <Link
+              to={`/dashboard/qr/${qr.id}/routage`}
+              className="rounded-md bg-indigo-100 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-200"
+            >
+              Routage
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => void handleDelete()}
@@ -159,6 +198,57 @@ export default function QRDetailPage() {
           </div>
         </div>
       </div>
+
+      {qr.idFiche && (
+        <div className="rounded-lg bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">Fiche liée</h3>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to={`/dashboard/fiches/${qr.idFiche}/edit`}
+                className="rounded-md bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+              >
+                Modifier la fiche
+              </Link>
+              {ficheLiee?.estActive && (
+                <a
+                  href={`/d/${qr.idFiche}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                >
+                  Page publique
+                </a>
+              )}
+            </div>
+          </div>
+
+          {ficheError ? (
+            <p className="mt-3 text-sm text-red-700">{ficheError}</p>
+          ) : !ficheLiee ? (
+            <p className="mt-3 text-sm text-gray-500">Chargement…</p>
+          ) : (
+            <div className="mt-3">
+              <p className="break-words text-sm font-medium text-gray-900">
+                {ficheLiee.titre}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {ficheLiee.estActive ? "Active" : "Archivée"} · révision{" "}
+                {ficheLiee.version} · modifiée le{" "}
+                {new Date(
+                  ficheLiee.dateModification ?? ficheLiee.dateCreation,
+                ).toLocaleDateString("fr-FR")}
+              </p>
+              {!ficheLiee.estActive && (
+                <p className="mt-2 text-xs text-amber-700">
+                  La fiche est archivée : la page publique renvoie « Fiche
+                  indisponible ».
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

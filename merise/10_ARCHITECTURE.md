@@ -16,7 +16,7 @@ Ce document décrit l'architecture technique du SaaS *Free QR Code* : stack, dé
 | Base de données | MongoDB Atlas M0 | Document natif, gratuit au démarrage, schéma souple. |
 | Stockage fichiers | Cloudflare R2 | Compatible S3, pas de frais de sortie, images QR. |
 | Envoi d'emails | SMTP maison via Nodemailer | Contrôle total, pas de SaaS email tiers. |
-| Géolocalisation IP | Service GeoIP auto-hébergé ou ipapi.co | Localisation anonymisée des scans. |
+| Géolocalisation IP | Cloudflare `request.cf` (natif edge) | Pays/ville sans appel réseau, ni quota ni sous-traitant supplémentaire. |
 | Génération QR | qrcode (Node.js) ou côté client (qrcode.react) | Flexibilité statique/dynamique. |
 | Authentification | JWT access token + refresh token (httpOnly cookie) | Stateless, rotation possible. |
 | Hébergement frontend | Cloudflare Pages | Intégration native avec Workers et R2. |

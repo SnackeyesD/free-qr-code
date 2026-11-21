@@ -21,7 +21,7 @@
 |--------|-------------|
 | API | [Hono](https://hono.dev/) + [Cloudflare Workers](https://workers.cloudflare.com/) |
 | Frontend | [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/) |
-| Base de données | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) — voir `apps/api/migrations/001_initial_schema.sql` |
+| Base de données | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) — migrations `apps/api/migrations/` (`001` schéma, `002` routage, `003` analytics variantes, `004` appareil & consentement, `005` plans) |
 | Stockage images | Cloudflare R2 (`QR_IMAGES`), servi via `/r2` |
 | Authentification | JWT access + refresh (cookies HttpOnly + header `Bearer`), clés API à permissions |
 | Emails | Worker email externe (Resend) via `EMAIL_WORKER_URL` ou service binding `EMAIL_WORKER` |
@@ -49,18 +49,28 @@ free-qr-code/
 │   │   │   │   ├── logs.ts          # /logs (journal applicatif)
 │   │   │   │   ├── preview.ts       # /preview/qr (aperçu SVG public, sans auth)
 │   │   │   │   ├── r2.ts            # /r2/users/:userId/qrcodes/:filename (images)
-│   │   │   │   └── redirect.ts      # /q/:aliasCourt (redirection + comptage scan)
+│   │   │   │   ├── routing.ts       # /qrcodes/:id/routage (+ /simuler) — routage contextuel
+│   │   │   │   └── redirect.ts      # /q/:aliasCourt (redirection routée + comptage scan)
 │   │   │   ├── services/            # Logique métier (auth, qrcode, scan, api-keys,
 │   │   │   │                        #   dashboard, admin, email, r2Image)
-│   │   │   ├── validators/          # Schémas Zod (qrcode, user, admin)
+│   │   │   │   ├── context.ts       # Contexte de scan (request.cf, langue, appareil)
+│   │   │   │   └── routing/         # config.ts (parsing), resolve.ts (moteur pur),
+│   │   │   │                        #   service.ts (CRUD + simulateur)
+│   │   │   ├── validators/          # Schémas Zod (qrcode, routing, user, admin)
 │   │   │   ├── middlewares/         # common (CORS, request-id, erreurs),
 │   │   │   │                        #   rate-limit, api-key-auth (JWT ou clé + permissions)
 │   │   │   ├── lib/                 # db/d1 (helpers D1), qr-generator, r2
 │   │   │   └── types/               # AppEnv, docs internes (UserDoc, QRCodeDoc…)
 │   │   ├── tests/                   # Vitest (better-sqlite3) : auth, user, qrcode,
-│   │   │                            #   qrcode-image, scan-utils, api-keys
+│   │   │                            #   qrcode-image, scan-utils, scan-record, context,
+│   │   │                            #   api-keys, routing (resolve / api / redirect),
+│   │   │                            #   appareil-consent (phase 4)
 │   │   ├── migrations/
-│   │   │   └── 001_initial_schema.sql  # Schéma D1 (12 tables + vues)
+│   │   │   ├── 001_initial_schema.sql  # Schéma D1 (12 tables + vues)
+│   │   │   ├── 002_routing.sql         # Colonnes regles_routage + fuseau
+│   │   │   ├── 003_routing_analytics.sql # scans.id_variante + langue + index
+│   │   │   ├── 004_appareil_consentement.sql # appareils_qr + consentements + scans.id_appareil
+│   │   │   └── 005_plans.sql           # plan utilisateur + consultations stats routage
 │   │   └── wrangler.toml            # Config Cloudflare Worker (+ [[services]] email)
 │   └── web/               # Frontend React + Vite
 │       ├── src/
@@ -70,13 +80,14 @@ free-qr-code/
 │       │   │                        #   dashboardApi.ts, adminApi.ts, sessionsApi.ts, qrForm.ts
 │       │   ├── contexts/            # AuthContext
 │       │   ├── hooks/               # useQR, useQRList, useQRCreate, useQRStats,
-│       │   │                        #   useSettings, useSessions, useApiKeys,
+│       │   │                        #   useSettings, useSessions, useApiKeys, useRouting,
 │       │   │                        #   useDashboardStats, useCampaigns, useTemplates,
 │       │   │                        #   useUsers, useReveal
 │       │   ├── components/          # Logo, QRCodeList, QRForm, QRPreview, HeroShowcase,
-│       │   │                        #   CampaignForm/List, TemplateForm/List, UserList…
+│       │   │                        #   routing/ (RoutingEditor, ConditionFields,
+│       │   │                        #   RoutingSimulator), CampaignForm/List, TemplateForm…
 │       │   ├── pages/               # Landing, auth (login/register/forgot/reset/verify),
-│       │   │                        #   dashboard QR (list/create/detail/edit/stats),
+│       │   │                        #   dashboard QR (list/create/detail/edit/stats/routage),
 │       │   │                        #   templates, api-keys, settings, sessions, admin…
 │       │   └── layouts/             # PublicLayout, DashboardLayout (+ AdminGuard)
 │       ├── public/                  # logo.svg, robots.txt, sitemap.xml
@@ -116,7 +127,7 @@ pnpm --filter @free-qr/web dev    # vite (port 5173)
 # Vérifications
 pnpm type-check
 pnpm lint
-pnpm test                          # vitest API (42 tests)
+pnpm test                          # vitest API (109 tests)
 
 # Build
 pnpm build
@@ -151,6 +162,9 @@ npx wrangler d1 migrations apply free-qr-api-db --remote
 | `CORS_ORIGINS` | Origines CORS autorisées (séparées par virgule) | `https://app.example.com,http://localhost:5173` |
 | `FRONTEND_URL` | URL publique du front (liens reset/verify dans les emails) | `https://app.example.com` |
 | `SMTP_FROM` | Adresse expéditeur | `noreply@free-qrcode.app` |
+| `ROUTING_PRO_ONLY` | `"true"` = édition du routage réservée au plan Pro (jamais lu sur `/q/:alias`) | `"false"` |
+| `ROUTING_LIMITE_VARIANTES` | Quota de variantes pour un compte gratuit si Pro-only | `20` |
+| `ROUTING_LIMITE_REGLES` | Quota de règles pour un compte gratuit si Pro-only | `50` |
 
 ### API — secrets Cloudflare (`wrangler secret put …`, jamais versionnés)
 
@@ -230,10 +244,21 @@ Montées dans `apps/api/src/index.ts`. Auth = JWT par défaut, sauf mention.
 | `/qrcodes/:id` | `DELETE` | Supprimer | ✅ / clé `qrcodes:delete` |
 | `/qrcodes/:id/download` | `GET` | Export PNG/SVG/PDF (`?format=`) | ✅ / clé `qrcodes:read` |
 | `/qrcodes/:id/stats` | `GET` | Stats (`?from=&to=`, totaux + évolution + pays/appareils) | ✅ / clé `stats:read` |
+| `/qrcodes/:id/routage` | `GET` | Config de routage contextuel (`null` si désactivé) | ✅ / clé `qrcodes:read` |
+| `/qrcodes/:id/routage` | `PUT` | Enregistrer le routage (validation stricte, QR dynamique requis) | ✅ / clé `qrcodes:update` |
+| `/qrcodes/:id/routage` | `DELETE` | Désactiver le routage (contenu du QR inchangé) | ✅ / clé `qrcodes:update` |
+| `/qrcodes/:id/routage/simuler` | `POST` | Simuler la destination + trace d'évaluation des règles | ✅ / clé `qrcodes:read` |
+| `/qrcodes/:id/routage/stats` | `GET` | Scans par variante (`?from=&to=`, libellés, parts, langues, pays) | ✅ / clé `stats:read` |
+| `/qrcodes/:id/routage/stats.csv` | `GET` | Export CSV des scans par variante | ✅ / clé `stats:read` |
+| `/q/:alias` | `GET` | Redirection dynamique (routage + fallback) | ❌ |
+| `/c/:alias` | `GET` | Page de consentement au comptage par appareil (HTML) | ❌ |
+| `/c/:alias/accepter` \| `/refuser` | `POST` | Choix de consentement (cookies `cfq_did` / `cfq_refus`) | ❌ |
+| `/consentement` | `GET/POST` | Consultation et retrait du consentement | ❌ |
 | `/api-keys` | `GET/POST` | Lister / créer (id = `public_id`, secret affiché 1 fois) | ✅ (JWT) |
 | `/api-keys/:id` | `GET/DELETE` | Détail / révoquer (par `public_id`) | ✅ (JWT) |
 | `/dashboard` | `GET` | Stats agrégées + tops/récents | ✅ |
 | `/admin/dashboard` | `GET` | Métriques globales | ✅ admin |
+| `/admin/routing/metrics` | `GET` | Adoption du routage, usage multi-variantes, consultations stats, plans | ✅ admin |
 | `/admin/campaigns` | `GET/POST` | Campagnes email | ✅ admin |
 | `/admin/campaigns/:id` | `GET/PATCH` | Détail / maj campagne | ✅ admin |
 | `/admin/campaigns/:id/send` | `POST` | Envoyer (via `SMTP_API_URL`) | ✅ admin |
@@ -243,7 +268,7 @@ Montées dans `apps/api/src/index.ts`. Auth = JWT par défaut, sauf mention.
 | `/logs` | `GET/POST` | Journal applicatif | ✅ |
 | `/preview/qr` | `GET` | Aperçu SVG public (`?content&couleur&background&size&correction`) | ❌ (rate-limit) |
 | `/r2/users/:userId/qrcodes/:filename` | `GET` | Images QR stockées (cache 1 an, sans middleware d'auth) | ❌ |
-| `/q/:aliasCourt` | `GET` | Redirection 302 + comptage scan (QR dynamiques, 404 si inactif, 410 si expiré) | ❌ |
+| `/q/:aliasCourt` | `GET` | Résolution d'un QR dynamique : redirection 302 (URL/URI) ou contenu servi (vCard `.vcf`, texte `text/plain`) + comptage scan (404 si inactif, 410 si expiré) | ❌ |
 
 ---
 
@@ -251,7 +276,39 @@ Montées dans `apps/api/src/index.ts`. Auth = JWT par défaut, sauf mention.
 
 Seuls les **QR dynamiques** sont comptés (redirection serveur via `/q/:alias`). Les statiques encodent le contenu en dur et ne touchent jamais l'API → **compteur non affiché** côté front (`Non suivi`).
 
-Par scan : IP anonymisée (/24), unicité journalière par IP, géoloc best-effort (ipapi.co, timeout 1.5s), agregat jour dans `statistiques_qrcodes` + `nombre_scans_total` incrémenté. Enregistrement en `waitUntil` (non-bloquant).
+Par scan : IP anonymisée (/24), unicité journalière par IP, géolocalisation fournie par Cloudflare (`request.cf` : pays fiable, ville best-effort — **aucun appel réseau ni quota tiers**), agregat jour dans `statistiques_qrcodes` + `nombre_scans_total` incrémenté. Enregistrement en `waitUntil` (non-bloquant).
+
+---
+
+## Routage contextuel (ContextFlow QR)
+
+Un QR dynamique peut servir **plusieurs destinations** selon le contexte du scan : heure/jour (dans le fuseau du QR), pays, langue du navigateur, appareil, nombre de scans. La configuration vit en JSON sur la ligne `qrcodes` (`regles_routage`) : **aucune requête supplémentaire** sur le chemin chaud.
+
+| Notion | Détail |
+|--------|--------|
+| **Variante** | Une destination (`id` stable et immuable, libellé, URL http(s)) |
+| **Règle** | Conditions (ET) + `priorite` croissante + `varianteId` ; première correspondance gagnante |
+| **Défaut** | Variante servie quand aucune règle ne correspond |
+| **Fallback** | Config absente/corrompue → contenu natif du QR (vCard servie en `.vcf`, texte en `text/plain`) ; variante non `http(s)` ignorée ; jamais de 5xx sur `/q/:alias` |
+| **Fuseau** | Celui du QR (`Africa/Brazzaville` par défaut), **jamais** celui du visiteur |
+
+Conditions supportées : `jours` (1–7), `heureMin`/`heureMax` (passage minuit géré), `pays` (ISO-2), `langues` (ISO-639-1), `appareil` (`mobile`/`tablet`/`desktop`), `minScansTotal`/`maxScansTotal`, `dates`, `villes`, `abTest` (tirage pondéré déterministe), `minScansAppareil`/`maxScansAppareil` (avec consentement).
+
+Contraintes validées à l'écriture : QR dynamique requis, ≥ 2 variantes si `actif`, priorités uniques, `defaut` existant, URL des **variantes** http(s) uniquement (`javascript:` rejeté), fuseau IANA valide.
+
+Le **contenu natif** d'un QR dynamique n'est pas limité aux URL : vCard, texte, WiFi, email, téléphone, SMS, géolocalisation et PDF sont acceptés. Il est validé selon son type (URL http(s), vCard complète, URI `mailto:`/`tel:`/`sms:`/`geo:`) puis servi au scan : vCard en fichier `.vcf` (`text/vcard`, `Content-Disposition: attachment`), texte/WiFi en `text/plain`, URL/URI en redirection `302`. Aucun contenu brut n'est jamais injecté dans un header `Location`.
+
+Correctif détaillé (incident `Invalid header value` sur `/q/oz4a205`) : [`doc/contextflow-qr/07_CORRECTIF_CONTENU_DYNAMIQUE.md`](./doc/contextflow-qr/07_CORRECTIF_CONTENU_DYNAMIQUE.md).
+
+Le moteur (`services/routing/resolve.ts`) est une **fonction pure** : `maintenant` injecté, zéro I/O, testé sur les fuseaux et le passage à minuit. L'écran `/dashboard/qr/:id/routage` inclut un **simulateur** qui affiche la destination servie et la trace de chaque règle.
+
+**Analytics par variante** : chaque scan enregistre `id_variante` et la langue négociée ; `GET /qrcodes/:id/routage/stats` agrège `scans` par destination (scans, uniques, part, top langues/pays) et signale les **variantes mortes** (aucun scan sur 7 jours alors que le QR en reçoit). Export CSV inclus. Le tableau affiche des **scans**, jamais des « conversions » : aucune donnée de conversion n'existe avant la page hôte (Phase 3).
+
+**Compteur par appareil (opt-in)** : une règle `minScansAppareil`/`maxScansAppareil` compte les visites du **même appareil**, jamais de la même personne. Le premier scan affiche une page de consentement (`/c/:alias`, HTML < 10 Ko, sans JS) ; l'acceptation pose un cookie `cfq_did` (UUID aléatoire, `HttpOnly`, `Secure`, `SameSite=Lax`, 13 mois) et le compteur vit dans `cfq_c` (aucune requête D1 sur le chemin chaud). Le refus (`cfq_refus=1`, 6 mois) laisse le QR fonctionner et ignore les règles appareil. La base ne stocke qu'un hash SHA-256 tronqué ; le retrait est disponible sur `/consentement`. Aucun fingerprinting.
+
+**Monétisation (couture, pas paywall)** : `ROUTING_PRO_ONLY="false"` en production → routage gratuit et illimité pour tous. Le jour de la bascule, `ROUTING_PRO_ONLY="true"` réserve l'**édition** aux comptes `plan='pro'` (`402`), avec des quotas pour les comptes gratuits. Le runtime `/q/:alias` ne lit **jamais** le plan : un QR déjà imprimé continue de router. `GET /admin/routing/metrics` expose l'adoption, l'usage multi-variantes, les consultations de stats et la répartition des plans, sans donnée personnelle.
+
+Plan complet (6 phases) : [`doc/contextflow-qr/`](./doc/contextflow-qr/README.md).
 
 The `merise/` folder contains the full software design lifecycle — MCD → MLD → MPD, business rules, DFD, UML navigation/sequence diagrams, architecture, OpenAPI contract, security & RGPD analysis, and a test plan. A sample of the discipline applied to this project:
 
@@ -274,18 +331,16 @@ Conception dans [`merise/`](./merise) (SQLite/D1, plus MongoDB) :
 
 Plans d'implémentation opérationnels dans [`doc/`](./doc) (preview QR, landing, emails, animations…).
 
-- [ ] Email verification & password reset flows (collections + tokens already provisioned)
-- [ ] Public API keys management (`/api-keys` — types already defined)
-- [ ] QR audit log exposure (`journaux_qrcodes` collection provisioned)
-- [ ] Billing page
-- [ ] Align `design` / `parametres` naming across API schemas
+**ContextFlow QR** (routage contextuel : heure, pays, langue, appareil) : plan complet en 6 phases dans [`doc/contextflow-qr/`](./doc/contextflow-qr/README.md).
+
+---
 
 ## Points d'attention / écarts connus
 
 - **Dualité `design` / `parametres`** : la création accepte `design`, la modification et la lecture exposent `parametres` (même objet `QRCodeDesign`). À unifier côté API.
 - **Journal d'audit** : table `journaux_qrcodes` migrée mais aucun endpoint ne l'expose.
-- **Images R2 sans auth** : `GET /r2/users/:userId/qrcodes/:filename` n'a aucun middleware — toute image est téléchargeable par URL directe. Assumer (URLs non listables) ou protéger.
-- **Consentement marketing obligatoire** à l'inscription côté front (`RegisterPage`) : à rendre optionnel (RGPD).
+- **Images R2 signées** : `GET /r2/users/:userId/qrcodes/:filename` exige une URL signée (`?exp=&sig=`, HMAC-SHA256, TTL 7 jours, re-signée à chaque lecture d'un QR). Clé : `R2_SIGNING_SECRET` (secret Cloudflare), repli sur `JWT_ACCESS_SECRET`. Les URLs directes `R2_PUBLIC_URL` (hors worker) ne sont pas signables — à éviter si la confidentialité des images compte.
+- **Consentement marketing optionnel** à l'inscription (`RegisterPage`) : conforme RGPD, modifiable à tout moment dans Paramètres.
 - **Emails** : compte Resend en test tant que le domaine d'envoi n'est pas vérifié (seul l'email propriétaire reçoit) ; worker email externe requis (`/api/sendVerification`, `/api/sendReset`).
 - **SEO** : pré-rendu statique des pages publiques recommandé (SPA sur hébergement mutualisé) ; `robots.txt` + `sitemap.xml` déjà dans `public/`.
 

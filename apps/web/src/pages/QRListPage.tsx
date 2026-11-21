@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { QRCodeList } from '@/components/QRCodeList';
 import { useQRList } from '@/hooks/useQRList';
+import { qrApi } from '@/lib/qrApi';
 
 export default function QRListPage() {
   const {
@@ -23,7 +24,7 @@ export default function QRListPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer définitivement ce QR code ?')) return;
-    await import('@/lib/qrApi').then((m) => m.qrApi.remove(id));
+    await qrApi.remove(id);
     await refetch();
   };
 

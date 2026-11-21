@@ -10,7 +10,8 @@
     "type-check": "tsc --noEmit",
     "deploy:dry-run": "wrangler deploy src/index.ts --dry-run",
     "lint": "echo 'lint not configured yet'",
-    "test": "vitest run"
+    "test": "vitest run",
+    "monitoring-prod": "npx wrangler tail --format pretty"
   },
   "dependencies": {
     "@cf-wasm/resvg": "^0.4.0",

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Free QR Code SaaS API
-  description: API REST du SaaS de génération de QR codes (Cloudflare Workers + MongoDB + R2).
+  description: API REST du SaaS de génération de QR codes (Cloudflare Workers + D1 + R2).
   version: 1.0.0
   contact:
     name: Free QR Code Support
@@ -258,6 +258,11 @@ paths:
               type: object
               properties:
                 contenu: { type: string }
+                typeContenu:
+                  type: string
+                  enum: [url, texte, email, telephone, sms, wifi, vcard, geo, pdf]
+                  description: >-
+                    Type du nouveau contenu. Déduit du contenu si absent.
                 estActif: { type: boolean }
       responses:
         '200':
@@ -320,9 +325,151 @@ paths:
             application/octet-stream:
               schema: { type: string, format: binary }
 
+  /qrcodes/{id}/routage:
+    get:
+      summary: Configuration de routage contextuel d'un QR dynamique
+      tags: [Routage]
+      security: [{ bearerAuth: [] }, { apiKeyAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Configuration courante (null si désactivée)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingState' }
+        '404': { description: QR code introuvable ou non possédé }
+    put:
+      summary: Enregistrer la configuration de routage
+      description: >
+        QR dynamique requis. Un routage actif exige au moins deux variantes et des
+        priorités de règles distinctes (ordre d'évaluation déterministe).
+      tags: [Routage]
+      security: [{ bearerAuth: [] }, { apiKeyAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutingConfig' }
+      responses:
+        '200':
+          description: Configuration enregistrée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingState' }
+        '400': { description: Configuration invalide, QR statique ou fuseau inconnu }
+        '402': { description: Routage réservé au plan Pro (`ROUTING_PRO_ONLY=true` et compte gratuit) }
+        '404': { description: QR code introuvable }
+    delete:
+      summary: Désactiver le routage (retour au contenu unique)
+      tags: [Routage]
+      security: [{ bearerAuth: [] }, { apiKeyAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Routage supprimé, contenu du QR inchangé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingState' }
+        '404': { description: QR code introuvable }
+
+  /qrcodes/{id}/routage/simuler:
+    post:
+      summary: Simuler la destination servie pour un contexte donné
+      description: >
+        Utilise la configuration enregistrée, ou celle fournie dans le corps
+        (aperçu live avant sauvegarde). Renvoie la trace d'évaluation de chaque règle.
+      tags: [Routage]
+      security: [{ bearerAuth: [] }, { apiKeyAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutingSimulationInput' }
+      responses:
+        '200':
+          description: Destination résolue
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingSimulationResult' }
+        '400': { description: Aucune configuration à simuler }
+        '422': { description: Configuration inexistante ou inactive }
+
+  /qrcodes/{id}/routage/stats:
+    get:
+      summary: Scans par variante de routage
+      description: >-
+        Agrège la table `scans` par `id_variante`. Ce sont des scans, pas des
+        conversions. Les scans antérieurs ou sans routage sont regroupés sous
+        « Sans routage » ; une variante supprimée reste affichée avec son id brut.
+      tags: [Routage]
+      security: [{ bearerAuth: [] }, { apiKeyAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Statistiques par variante
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingStatsResult' }
+        '400': { description: Période inversée ou paramètre invalide }
+        '404': { description: QR code introuvable ou non possédé }
+
+  /qrcodes/{id}/routage/stats.csv:
+    get:
+      summary: Export CSV des scans par variante
+      description: Mêmes filtres que `/qrcodes/{id}/routage/stats`, séparateur `;` (Excel FR).
+      tags: [Routage]
+      security: [{ bearerAuth: [] }, { apiKeyAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Fichier CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        '400': { description: Période inversée ou paramètre invalide }
+        '404': { description: QR code introuvable ou non possédé }
+
   /q/{aliasCourt}:
     get:
-      summary: Redirection d'un QR dynamique
+      summary: Résolution d'un QR dynamique (redirection ou contenu)
       tags: [Redirection]
       security: []
       parameters:
@@ -331,12 +478,166 @@ paths:
           required: true
           schema: { type: string }
       responses:
+        '200':
+          description: >-
+            Contenu servi directement pour un QR dynamique non-URL : vCard en
+            `text/vcard` avec `Content-Disposition: attachment` (fichier
+            `.vcf`), texte/WiFi en `text/plain`. Aucun header `Location` n'est
+            émis. Si le routage contextuel est actif et qu'une variante valide
+            existe, la réponse est une redirection `302` à la place.
+          headers:
+            Content-Type:
+              schema: { type: string }
+              description: >-
+                `text/vcard; charset=utf-8` ou `text/plain; charset=utf-8`.
+            Content-Disposition:
+              schema: { type: string }
+              description: '`attachment; filename="contact.vcf"` pour une vCard.'
+          content:
+            text/vcard:
+              schema: { type: string }
+            text/plain:
+              schema: { type: string }
         '302':
-          description: Redirection vers la cible
+          description: >-
+            Redirection vers la cible pour les types URL/PDF/email/téléphone/
+            SMS/géolocalisation, ou vers une variante de routage. Si le routage
+            contextuel est actif, la variante gagnante reçoit en plus
+            `?cfq=<idVariante>` pour permettre au client de mesurer une
+            conversion (phase 3, option B). Si le QR utilise une condition
+            `minScansAppareil`/`maxScansAppareil` et qu'aucun consentement n'est
+            mémorisé, la réponse est d'abord une redirection vers
+            `/c/{aliasCourt}`.
         '404':
-          description: Alias inconnu ou QR inactif
+          description: >-
+            Alias inconnu, QR inactif, ou destination URL invalide (aucune
+            redirection n'est émise, jamais de 500).
         '410':
           description: QR supprimé définitivement
+
+  /c/{aliasCourt}:
+    get:
+      summary: Page de consentement au comptage par appareil
+      description: >-
+        Servie uniquement pour un QR dont une règle active utilise
+        `minScansAppareil`/`maxScansAppareil`, et tant qu'aucun choix (accord
+        ou refus) n'est mémorisé. HTML autonome, sans JavaScript, `noindex`,
+        `no-store`, budget < 10 Ko. Redirige vers `/q/{aliasCourt}` sinon.
+      tags: [Consentement]
+      security: []
+      parameters:
+        - name: aliasCourt
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Formulaire Accepter / Refuser
+          content:
+            text/html:
+              schema: { type: string }
+        '302': { description: Consentement déjà mémorisé ou QR sans condition appareil }
+        '404': { description: Alias inconnu ou QR inactif }
+        '410': { description: QR expiré }
+
+  /c/{aliasCourt}/accepter:
+    post:
+      summary: Accepter le comptage par appareil
+      description: >-
+        Pose `cfq_did` (UUID aléatoire, HttpOnly, Secure, SameSite=Lax,
+        13 mois), enregistre une preuve hashée SHA-256 dans `consentements`,
+        puis redirige vers `/q/{aliasCourt}?cfq_decision=accept`.
+      tags: [Consentement]
+      security: []
+      parameters:
+        - name: aliasCourt
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '302':
+          description: Consentement enregistré, retour vers la redirection
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        '403': { description: Origine de formulaire non autorisée }
+        '404': { description: Alias inconnu ou QR inactif }
+        '410': { description: QR expiré }
+
+  /c/{aliasCourt}/refuser:
+    post:
+      summary: Refuser le comptage par appareil
+      description: >-
+        Pose `cfq_refus=1` (6 mois, strictement nécessaire), supprime tout
+        consentement antérieur pour cet appareil, puis redirige vers
+        `/q/{aliasCourt}?cfq_decision=refus`. Les règles appareil sont ignorées.
+      tags: [Consentement]
+      security: []
+      parameters:
+        - name: aliasCourt
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '302':
+          description: Refus mémorisé, retour vers la redirection
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        '403': { description: Origine de formulaire non autorisée }
+        '404': { description: Alias inconnu ou QR inactif }
+        '410': { description: QR expiré }
+
+  /consentement:
+    get:
+      summary: Page de retrait du consentement au comptage par appareil
+      tags: [Consentement]
+      security: []
+      parameters:
+        - name: retire
+          in: query
+          required: false
+          schema: { type: string, enum: ['1'] }
+      responses:
+        '200':
+          description: État du consentement et bouton de retrait
+          content:
+            text/html:
+              schema: { type: string }
+
+  /consentement/retirer:
+    post:
+      summary: Retirer le consentement au comptage par appareil
+      description: >-
+        Horodate `date_retrait`, remet `scans.id_appareil` à NULL pour ce hash,
+        supprime `appareils_qr`, puis efface les cookies `cfq_did`, `cfq_c` et
+        `cfq_refus`. Redirige vers `/consentement?retire=1`.
+      tags: [Consentement]
+      security: []
+      responses:
+        '302':
+          description: Consentement retiré
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        '403': { description: Origine de formulaire non autorisée }
+
+  /admin/routing/metrics:
+    get:
+      summary: Métriques d'adoption et d'intérêt du routage contextuel
+      description: >-
+        Comptages agrégés (aucune donnée personnelle) : QR avec routage,
+        QR multi-variantes, comptes distincts, consultations de l'écran de
+        stats et répartition des plans. Même protection que `/admin/dashboard`.
+      tags: [Administration]
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Métriques courantes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutingMetrics' }
+        '403': { description: Accès administrateur requis }
 
   /admin/campaigns:
     get:
@@ -494,7 +795,7 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: Clé API (préfixe + secret). Alternative : header Authorization "ApiKey <clé>". Permissions requises — qrcodes:read (GET), qrcodes:create (POST), qrcodes:update (PATCH), qrcodes:delete (DELETE), stats:read (stats). 401 clé invalide/expirée/révoquée, 403 permission manquante. Routes /admin/* : JWT admin uniquement.
+      description: 'Clé API (préfixe + secret). Alternative : header Authorization "ApiKey <clé>". Permissions requises — qrcodes:read (GET), qrcodes:create (POST), qrcodes:update (PATCH), qrcodes:delete (DELETE), stats:read (stats). 401 clé invalide/expirée/révoquée, 403 permission manquante. Routes /admin/* : JWT admin uniquement.'
 
   schemas:
     Utilisateur:
@@ -564,3 +865,244 @@ components:
         contenu: { type: string }
         estPublic: { type: boolean }
         categorie: { type: string }
+
+    RoutingVariante:
+      type: object
+      required: [id, libelle, typeSortie, contenu]
+      properties:
+        id: { type: string, description: Identifiant stable, immuable après création }
+        libelle: { type: string }
+        typeSortie: { type: string, enum: [url] }
+        contenu: { type: string, description: "URL http(s) uniquement" }
+        poids: { type: integer, minimum: 1, maximum: 100, description: "Réservé au test A/B (phase 3)" }
+      example:
+        id: v_en
+        libelle: Profil EN
+        typeSortie: url
+        contenu: https://exemple.com/en
+
+    RoutingConditions:
+      type: object
+      description: Conditions combinées en ET. Condition absente = joker.
+      properties:
+        jours:
+          type: array
+          items: { type: integer, minimum: 1, maximum: 7 }
+          description: 1=lundi … 7=dimanche, dans le fuseau du QR
+        heureMin: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$' }
+        heureMax: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$' }
+        pays:
+          type: array
+          items: { type: string, pattern: '^[A-Z]{2}$' }
+        langues:
+          type: array
+          items: { type: string, pattern: '^[a-z]{2}$' }
+        appareil:
+          type: array
+          items: { type: string, enum: [mobile, tablet, desktop] }
+        minScansTotal: { type: integer, minimum: 0 }
+        maxScansTotal: { type: integer, minimum: 1, description: "Borne exclusive" }
+        minScansAppareil:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+          description: >-
+            Numéro de ce scan pour le même appareil (1 = premier scan).
+            Nécessite le consentement du visiteur ; sinon la condition ne
+            correspond jamais.
+        maxScansAppareil:
+          type: integer
+          minimum: 2
+          maximum: 1000000
+          description: "Borne exclusive du compteur appareil consenti"
+        dates:
+          type: object
+          description: Bornes ISO 8601 incluses, comparées à l'instant du scan.
+          required: [debut, fin]
+          properties:
+            debut: { type: string, format: date-time }
+            fin: { type: string, format: date-time }
+        villes:
+          type: array
+          description: Villes `request.cf.city` (best-effort, casse et accents ignorés).
+          items: { type: string }
+        abTest:
+          type: boolean
+          description: Marque une règle de tirage pondéré (varianteId doit être un tableau).
+
+    RoutingRegle:
+      type: object
+      required: [id, priorite, varianteId, conditions]
+      properties:
+        id: { type: string }
+        priorite: { type: integer, description: "Évaluée dans l'ordre croissant ; première correspondance gagnante" }
+        varianteId:
+          oneOf:
+            - type: string
+            - type: array
+              minItems: 2
+              maxItems: 5
+              items: { type: string }
+          description: Tableau = tirage pondéré A/B (exige conditions.abTest = true)
+        conditions: { $ref: '#/components/schemas/RoutingConditions' }
+
+    RoutingConfig:
+      type: object
+      required: [version, actif, fuseau, defaut, variantes, regles]
+      properties:
+        version: { type: integer, enum: [1] }
+        actif: { type: boolean }
+        fuseau: { type: string, example: Africa/Brazzaville }
+        defaut: { type: string, description: Identifiant de la variante servie si aucune règle ne correspond }
+        variantes:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: '#/components/schemas/RoutingVariante' }
+        regles:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/RoutingRegle' }
+
+    RoutingState:
+      type: object
+      properties:
+        reglesRoutage:
+          allOf: [{ $ref: '#/components/schemas/RoutingConfig' }]
+          nullable: true
+        fuseau: { type: string }
+        estDynamique: { type: boolean }
+        contenu: { type: string }
+        limites: { $ref: '#/components/schemas/RoutingLimites' }
+
+    RoutingLimites:
+      type: object
+      description: >-
+        Couture de monétisation. `autorise:false` bloque uniquement la
+        création/modification ; les configurations existantes continuent de
+        router et `/q/:alias` ne lit jamais le plan.
+      required: [plan, proOnly, autorise, variantes, regles]
+      properties:
+        plan: { type: string, enum: [gratuit, pro] }
+        proOnly: { type: boolean }
+        autorise: { type: boolean }
+        variantes:
+          type: integer
+          nullable: true
+          description: "null = illimité"
+        regles:
+          type: integer
+          nullable: true
+          description: "null = illimité"
+
+    RoutingMetrics:
+      type: object
+      required:
+        [proOnly, qrTotal, qrAvecRoutage, qrMultiVariantes, comptesRoutage, consultationsStats, plans, genereLe]
+      properties:
+        proOnly: { type: boolean }
+        qrTotal: { type: integer, minimum: 0 }
+        qrAvecRoutage: { type: integer, minimum: 0 }
+        qrMultiVariantes:
+          type: integer
+          minimum: 0
+          description: QR avec au moins deux variantes (usage réel)
+        comptesRoutage:
+          type: integer
+          minimum: 0
+          description: Comptes distincts ayant configuré du routage
+        consultationsStats:
+          type: object
+          required: [total, trenteJours, comptes]
+          properties:
+            total: { type: integer, minimum: 0 }
+            trenteJours: { type: integer, minimum: 0 }
+            comptes: { type: integer, minimum: 0 }
+        plans:
+          type: object
+          required: [gratuit, pro]
+          properties:
+            gratuit: { type: integer, minimum: 0 }
+            pro: { type: integer, minimum: 0 }
+        genereLe: { type: string, format: date-time }
+
+    RoutingSimulationInput:
+      type: object
+      properties:
+        config: { $ref: '#/components/schemas/RoutingConfig' }
+        pays: { type: string, pattern: '^[A-Z]{2}$' }
+        ville: { type: string }
+        langue: { type: string, pattern: '^[a-z]{2}$' }
+        appareil: { type: string, enum: [mobile, tablet, desktop] }
+        scansAppareil:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+          description: >-
+            Numéro de ce scan pour l'appareil simulé. Omis = appareil inconnu :
+            les conditions appareil ne correspondent pas.
+        date: { type: string, format: date-time }
+        graine: { type: string, description: "Graine du tirage A/B (défaut : simulation)" }
+
+    RoutingEtapeEvaluation:
+      type: object
+      properties:
+        regleId: { type: string }
+        priorite: { type: integer }
+        varianteId:
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        correspond: { type: boolean }
+        motif: { type: string }
+
+    RoutingSimulationResult:
+      type: object
+      properties:
+        varianteId: { type: string }
+        libelle: { type: string }
+        contenu: { type: string }
+        regleId: { type: string, nullable: true }
+        raison: { type: string }
+        contexte: { type: object }
+        trace:
+          type: array
+          items: { $ref: '#/components/schemas/RoutingEtapeEvaluation' }
+
+    RoutingVarianteStat:
+      type: object
+      properties:
+        varianteId: { type: string, nullable: true, description: "null = scan sans routage" }
+        libelle: { type: string }
+        scans: { type: integer }
+        scansUniques: { type: integer }
+        part: { type: number, minimum: 0, maximum: 1 }
+        langues: { type: object, additionalProperties: { type: integer } }
+        pays: { type: object, additionalProperties: { type: integer } }
+        supprimee: { type: boolean }
+
+    RoutingStatsAlerte:
+      type: object
+      properties:
+        type: { type: string, enum: [variante_morte] }
+        varianteId: { type: string }
+        libelle: { type: string }
+        message: { type: string }
+
+    RoutingStatsResult:
+      type: object
+      properties:
+        periode:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        totalScans: { type: integer }
+        scansUniques: { type: integer }
+        variantes:
+          type: array
+          items: { $ref: '#/components/schemas/RoutingVarianteStat' }
+        alertes:
+          type: array
+          items: { $ref: '#/components/schemas/RoutingStatsAlerte' }

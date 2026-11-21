@@ -12,6 +12,12 @@ API_BASE_URL = "https://free-qr-api.messiasayi.workers.dev"
 CORS_ORIGINS = "https://free-qr-code-saas.getcongo.com"
 FRONTEND_URL = "https://free-qr-code-saas.getcongo.com"
 SMTP_FROM = "noreply@free-qrcode.app"
+# Couture de monétisation : "false" = routage gratuit pour tous.
+# Bascule : "true" bloque la création/modification pour les comptes gratuits,
+# jamais le runtime des QR déjà imprimés.
+ROUTING_PRO_ONLY = "false"
+ROUTING_LIMITE_VARIANTES = "20"
+ROUTING_LIMITE_REGLES = "50"
 
 [[r2_buckets]]
 binding = "QR_IMAGES"

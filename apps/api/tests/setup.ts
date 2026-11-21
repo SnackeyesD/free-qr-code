@@ -36,11 +36,6 @@ const baseEnv: Omit<AppEnv["Bindings"], "DB"> = {
   RATE_LIMIT_MAX_REQUESTS: "100",
 };
 
-const schemaPath = path.resolve(
-  __dirname,
-  "../migrations/001_initial_schema.sql",
-);
-
 function normalizeBindValue(value: unknown): unknown {
   if (typeof value === "boolean") return value ? 1 : 0;
   return value;
@@ -212,7 +207,15 @@ export function createTestEnv(): TestContext {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
-  const schema = fs.readFileSync(schemaPath, "utf-8");
+  const schema = fs
+    .readdirSync(path.resolve(__dirname, "../migrations"))
+    .filter((name) => name.endsWith(".sql"))
+    .sort()
+    .map((name) =>
+      fs.readFileSync(path.resolve(__dirname, "../migrations", name), "utf-8"),
+    )
+    .join("\n");
+
   db.exec(schema);
 
   const d1 = createD1Database(db);
@@ -301,10 +304,18 @@ export async function makeRequest(
   if (options.body !== undefined) {
     init.body = JSON.stringify(options.body);
   }
-  return app.fetch(new Request(url.toString(), init), env, {
-    waitUntil: () => {},
+  const pending: Promise<unknown>[] = [];
+  const response = await app.fetch(new Request(url.toString(), init), env, {
+    waitUntil: (promise: Promise<unknown>) => {
+      pending.push(promise);
+    },
     passThroughOnException: () => {},
   } as any);
+
+  // Les traitements en waitUntil (enregistrement des scans) sont attendus pour
+  // rendre les tests deterministes avant la fermeture de la base.
+  await Promise.allSettled(pending);
+  return response;
 }
 
 export function createTestApp(): Hono<AppEnv> {

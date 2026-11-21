@@ -2,10 +2,17 @@ import type { AppContext } from '../types/index.js';
 import { d1First, d1All, d1Run } from '../lib/db.js';
 import type { QRCodeDoc, ScanDoc, StatistiquesQRCodeDoc } from '../types/index.js';
 import { detectTypeContenu } from '../lib/qr-generator.js';
+import type { ContexteScan } from './context.js';
+import { parseConfigRoutage } from './routing/config.js';
+import type { RoutingConfig } from '@free-qr/shared-types';
 
-type QRCodeRow = QRCodeDoc & { id: number };
+type QRCodeRow = QRCodeDoc & {
+  id: number;
+  regles_routage?: string | null;
+  fuseau?: string | null;
+};
 
-type StatsRow = StatistiquesQRCodeDoc & { id: number };
+export type QRCodeRoutable = QRCodeRow & { configRoutage: RoutingConfig | null };
 
 export interface ClientInfo {
   ip: string;
@@ -49,46 +56,6 @@ export function parseDeviceFamily(userAgent: string): string {
   return 'Desktop / Autre';
 }
 
-function isPrivateOrReservedIp(ip: string): boolean {
-  if (ip === 'unknown') return true;
-  if (ip.startsWith('127.') || ip.startsWith('10.') || ip.startsWith('192.168.')) return true;
-  if (ip.startsWith('172.')) {
-    const second = parseInt(ip.split('.')[1] ?? '0', 10);
-    if (second >= 16 && second <= 31) return true;
-  }
-  if (ip.startsWith('::1') || ip.startsWith('fc00:') || ip.startsWith('fe80:')) return true;
-  return false;
-}
-
-export interface GeoInfo {
-  pays?: string;
-  ville?: string;
-}
-
-export async function lookupGeo(ip: string): Promise<GeoInfo> {
-  if (isPrivateOrReservedIp(ip)) {
-    return {};
-  }
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
-    const response = await fetch(`https://ipapi.co/${ip}/json/`, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'free-qr-code-saas/1.0' },
-    });
-    clearTimeout(timeout);
-    if (!response.ok) return {};
-    const data = (await response.json()) as Record<string, unknown>;
-    if (data.error) return {};
-    return {
-      pays: typeof data.country_name === 'string' ? data.country_name : undefined,
-      ville: typeof data.city === 'string' ? data.city : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
-
 export function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);
@@ -102,11 +69,13 @@ function toISODate(date: Date): string {
 export async function recordScan(
   env: AppContext['env'],
   qrCode: QRCodeRow,
-  info: ClientInfo
+  info: ClientInfo,
+  contexte: ContexteScan,
+  idVariante: string | null = null,
+  idAppareil: string | null = null
 ): Promise<void> {
   const anonymizedIp = anonymizeIp(info.ip);
-  const geo = await lookupGeo(info.ip);
-  const now = new Date();
+  const now = contexte.maintenant;
   const today = toISODate(startOfDay(now));
   const todayStart = `${today}T00:00:00.000Z`;
   const publicId = crypto.randomUUID();
@@ -126,67 +95,83 @@ export async function recordScan(
   // Inserer le scan.
   await d1Run(
     env,
-    `INSERT INTO scans (public_id, id_qrcode, adresse_ip, user_agent, pays, ville, referer, date_scan, est_unique)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO scans
+       (public_id, id_qrcode, adresse_ip, user_agent, pays, ville, langue, referer, date_scan, est_unique, id_variante, id_appareil)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     publicId,
     qrCode.id,
     anonymizedIp,
     info.userAgent,
-    geo.pays ?? null,
-    geo.ville ?? null,
+    contexte.pays ?? null,
+    contexte.ville ?? null,
+    contexte.langue ?? null,
     info.referer ?? null,
     now.toISOString(),
-    estUnique ? 1 : 0
+    estUnique ? 1 : 0,
+    idVariante,
+    idAppareil
   );
 
-  const deviceFamily = parseDeviceFamily(info.userAgent);
+  // Agregat d'audit par appareil (hash). Le compteur de redirection reste le
+  // cookie `cfq_c` : cette ecriture est non bloquante et purement analytique.
+  if (idAppareil) {
+    await d1Run(
+      env,
+      `INSERT INTO appareils_qr
+         (id_appareil, id_qrcode, nombre_scans, premier_scan, dernier_scan)
+       VALUES (?, ?, 1, ?, ?)
+       ON CONFLICT(id_appareil, id_qrcode) DO UPDATE SET
+         nombre_scans = nombre_scans + 1,
+         dernier_scan = excluded.dernier_scan`,
+      idAppareil,
+      qrCode.id,
+      now.toISOString(),
+      now.toISOString()
+    );
+  }
 
-  // Upsert des statistiques journalieres avec JSON pour les top pays/appareils.
-  const statsRow = await d1First<StatsRow>(
+  // Les tops journaliers sont un cache best-effort : l'API de stats les recalcule
+  // de toute facon depuis la table `scans`, qui reste la source de verite.
+  const statsRow = await d1First<{
+    id: number;
+    paysTop: string | null;
+    appareilsTop: string | null;
+  }>(
     env,
-    `SELECT id, pays_top, appareils_top FROM statistiques_qrcodes
+    `SELECT id, pays_top AS paysTop, appareils_top AS appareilsTop
+     FROM statistiques_qrcodes
      WHERE id_qrcode = ? AND date = ?`,
     qrCode.id,
     today
   );
 
-  const paysTop: Record<string, number> = safeParseJson(statsRow?.paysTop ?? '{}', 'pays_top');
-  const appareilsTop: Record<string, number> = safeParseJson(
-    statsRow?.appareilsTop ?? '{}',
-    'appareils_top'
-  );
+  const paysTop = safeParseJson(statsRow?.paysTop ?? null, 'pays_top');
+  const appareilsTop = safeParseJson(statsRow?.appareilsTop ?? null, 'appareils_top');
 
-  const paysKey = geo.pays ?? 'Inconnu';
+  const paysKey = contexte.pays ?? 'Inconnu';
+  const appareilKey = parseDeviceFamily(info.userAgent);
   paysTop[paysKey] = (paysTop[paysKey] ?? 0) + 1;
-  appareilsTop[deviceFamily] = (appareilsTop[deviceFamily] ?? 0) + 1;
+  appareilsTop[appareilKey] = (appareilsTop[appareilKey] ?? 0) + 1;
 
-  if (statsRow) {
-    await d1Run(
-      env,
-      `UPDATE statistiques_qrcodes
-       SET nombre_scans = nombre_scans + 1,
-           nombre_scans_uniques = nombre_scans_uniques + ?,
-           pays_top = ?,
-           appareils_top = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      estUnique ? 1 : 0,
-      JSON.stringify(paysTop),
-      JSON.stringify(appareilsTop),
-      statsRow.id
-    );
-  } else {
-    await d1Run(
-      env,
-      `INSERT INTO statistiques_qrcodes (id_qrcode, date, nombre_scans, nombre_scans_uniques, pays_top, appareils_top)
-       VALUES (?, ?, 1, ?, ?, ?)`,
-      qrCode.id,
-      today,
-      estUnique ? 1 : 0,
-      JSON.stringify(paysTop),
-      JSON.stringify(appareilsTop)
-    );
-  }
+  // Upsert atomique des compteurs (UNIQUE(id_qrcode, date) existe dans le schema).
+  // Les colonnes JSON restent un read-modify-write best-effort.
+  await d1Run(
+    env,
+    `INSERT INTO statistiques_qrcodes
+       (id_qrcode, date, nombre_scans, nombre_scans_uniques, pays_top, appareils_top)
+     VALUES (?, ?, 1, ?, ?, ?)
+     ON CONFLICT(id_qrcode, date) DO UPDATE SET
+       nombre_scans = nombre_scans + 1,
+       nombre_scans_uniques = nombre_scans_uniques + excluded.nombre_scans_uniques,
+       pays_top = excluded.pays_top,
+       appareils_top = excluded.appareils_top,
+       updated_at = CURRENT_TIMESTAMP`,
+    qrCode.id,
+    today,
+    estUnique ? 1 : 0,
+    JSON.stringify(paysTop),
+    JSON.stringify(appareilsTop)
+  );
 
   // Incrementer le compteur total du QR code.
   await d1Run(
@@ -223,17 +208,21 @@ function safeParseJson(value: unknown, fieldName: string): Record<string, number
 export async function resolveQrCodeByAlias(
   env: AppContext['env'],
   aliasCourt: string
-): Promise<QRCodeRow | null> {
-  return d1First<QRCodeRow>(
+): Promise<QRCodeRoutable | null> {
+  const row = await d1First<QRCodeRow>(
     env,
     `SELECT id, public_id, id_utilisateur, contenu, type_contenu AS typeContenu,
             est_dynamique AS estDynamique, alias_court AS aliasCourt, parametres,
             est_actif AS estActif, date_creation AS dateCreation, date_expiration AS dateExpiration,
-            nombre_scans_total AS nombreScansTotal, url_image AS urlImage, id_modele AS idModele
+            nombre_scans_total AS nombreScansTotal, url_image AS urlImage, id_modele AS idModele,
+            regles_routage, fuseau
      FROM qrcodes
      WHERE alias_court = ? AND est_dynamique = 1`,
     aliasCourt
   );
+
+  if (!row) return null;
+  return { ...row, configRoutage: parseConfigRoutage(row.regles_routage) };
 }
 
 export interface StatsResult {

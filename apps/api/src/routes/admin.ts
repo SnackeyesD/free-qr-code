@@ -27,6 +27,7 @@ import type { AppEnv } from '../types/index.js';
 import type { CibleCampagneEmail } from '../validators/admin.js';
 
 import type { CreateCampaignInput as CreateCampaignInputService, CreateTemplateInput as CreateTemplateInputService } from '../services/admin.js';
+import { getRoutingMetrics } from '../services/routing/metrics.js';
 
 export const adminRoutes = new Hono<AppEnv>();
 
@@ -95,6 +96,12 @@ adminRoutes.delete('/templates/:id', async (c) => {
   const id = Number(c.req.param('id'));
   await deleteTemplate(c.env, id);
   return new Response(null, { status: 204 });
+});
+
+// Instrumentation ContextFlow QR (phase 5) : adoption, usage, intérêt stats.
+adminRoutes.get('/routing/metrics', async (c) => {
+  const metrics = await getRoutingMetrics(c.env);
+  return c.json(metrics);
 });
 
 export const trackingRoutes = new Hono<AppEnv>();
