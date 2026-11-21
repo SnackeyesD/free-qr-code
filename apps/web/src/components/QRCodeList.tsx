@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { QRCode } from '@free-qr/shared-types';
 import { Link } from 'react-router-dom';
-
+ import { buildPreviewUrl } from '@/lib/qrPreview';
 interface QRCodeCardProps {
   qr: QRCode;
   onDelete?: (id: string) => void;
@@ -10,17 +10,7 @@ interface QRCodeCardProps {
 export function QRCodeCard({ qr, onDelete }: QRCodeCardProps) {
   const imageUrl = useMemo(() => {
     if (qr.urlImage) return qr.urlImage;
-    try {
-      const params = new URLSearchParams();
-      params.set('data', qr.contenu);
-      if (qr.parametres?.couleur) params.set('color', String(qr.parametres.couleur).replace('#', ''));
-      if (qr.parametres?.background) params.set('bgcolor', String(qr.parametres.background).replace('#', ''));
-      params.set('size', '100');
-      if (qr.parametres?.correction) params.set('level', qr.parametres.correction);
-      return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
-    } catch {
-      return null;
-    }
+    return buildPreviewUrl(qr.contenu, qr.parametres, 200);
   }, [qr]);
 
   const typeLabel = qr.estDynamique ? 'Dynamique' : 'Statique';
@@ -35,15 +25,15 @@ export function QRCodeCard({ qr, onDelete }: QRCodeCardProps) {
           <img
             src={imageUrl}
             alt=""
-            className="h-20 w-20 rounded-md border border-gray-100 bg-white object-contain p-1"
+            className="h-20 w-20 shrink-0 rounded-md border border-gray-100 bg-white object-contain p-1"
           />
         ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400">
+          <div className="flex shrink-0 h-20 w-20 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400">
             QR
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${typeClass}`}>
               {typeLabel}
             </span>
@@ -60,13 +50,17 @@ export function QRCodeCard({ qr, onDelete }: QRCodeCardProps) {
           <p className="mt-0.5 truncate text-xs text-gray-500" title={qr.contenu}>
             {qr.contenu}
           </p>
-          <div className="mt-2 text-xs text-gray-500">
-            {qr.nombreScansTotal} scan{qr.nombreScansTotal !== 1 ? 's' : ''}
-          </div>
+          {qr.estDynamique ? (
+           <div className="mt-2 text-xs text-gray-500">
+             {qr.nombreScansTotal} scan{qr.nombreScansTotal !== 1 ? 's' : ''}
+           </div>
+         ) : (
+           <div className="mt-2 text-xs italic text-gray-400">Suivi des scans non disponible en statique</div>
+         )}
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
         <Link
           to={`/dashboard/qr/${qr.id}`}
           className="rounded-md px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
@@ -120,7 +114,7 @@ export function QRCodeList({ qrcodes, onDelete }: QRCodeListProps) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {qrcodes.map((qr) => (
         <QRCodeCard key={qr.id} qr={qr} onDelete={onDelete} />
       ))}

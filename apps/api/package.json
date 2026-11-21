@@ -13,22 +13,24 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cf-wasm/resvg": "^0.4.0",
     "@free-qr/shared-types": "workspace:*",
     "@hono/zod-validator": "^0.4.3",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.2",
     "hono": "^4.7.0",
     "jose": "^5.10.0",
+    "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250300.0",
+    "@cloudflare/workers-types": "^5.20260730.1",
     "@types/bcryptjs": "^3.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^13.0.2",
     "typescript": "^5.8.0",
     "vitest": "^4.1.10",
-    "wrangler": "^3.114.0"
+    "wrangler": "^4.116.0"
   }
 }

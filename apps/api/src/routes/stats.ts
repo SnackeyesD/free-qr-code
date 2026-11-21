@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { HTTPException } from 'hono/http-exception';
 import { d1First } from '../lib/db.js';
-import { authMiddleware } from '../services/auth.js';
+import { requirePermission } from '../middlewares/api-key-auth.js';
 import { getQrCodeStats } from '../services/scan.js';
 import type { AppEnv } from '../types/index.js';
 import type { QRCodeDoc } from '../types/index.js';
@@ -15,7 +15,7 @@ const statsQuerySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
-statsRoutes.get('/:id/stats', authMiddleware, zValidator('query', statsQuerySchema), async (c) => {
+statsRoutes.get('/:id/stats', requirePermission('stats:read') as unknown as import('hono').MiddlewareHandler<AppEnv>, zValidator('query', statsQuerySchema), async (c) => {
   const id = c.req.param('id');
   if (!id || !/^\d+$/.test(id)) {
     throw new HTTPException(400, { message: 'Invalid QR code id' });

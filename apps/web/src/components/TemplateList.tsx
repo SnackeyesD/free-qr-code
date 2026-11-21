@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { ModeleQR, TypeContenuQR } from '@free-qr/shared-types';
+ import { buildPreviewUrl } from '@/lib/qrPreview';
+
 
 interface TemplateListProps {
   templates: ModeleQR[];
@@ -44,23 +46,23 @@ interface TemplateCardProps {
 
 function TemplateCard({ template, onDelete }: TemplateCardProps) {
   const previewUrl = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set('data', 'https://example.com');
-    params.set('size', String(template.parametresParDefaut?.taille ?? 300));
-    if (template.parametresParDefaut?.couleur) params.set('color', template.parametresParDefaut.couleur.replace('#', ''));
-    if (template.parametresParDefaut?.background) params.set('bgcolor', template.parametresParDefaut.background.replace('#', ''));
-    if (template.parametresParDefaut?.correction) params.set('level', template.parametresParDefaut.correction);
-    return `https://api.qrserver.com/v1/create-qr-code/?${params.toString()}`;
+    return buildPreviewUrl('https://example.com', template.parametresParDefaut, template.parametresParDefaut?.taille ?? 300);
   }, [template]);
 
   return (
     <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
       <div className="mb-3 flex items-center justify-center">
-        <img
+        {previewUrl ? (
+          <img
           src={previewUrl}
           alt={`Aperçu de ${template.nom}`}
           className="h-24 w-24 rounded-md border border-gray-100 bg-white object-contain p-1"
         />
+        ) : (
+         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400">
+           QR
+         </div>
+       ) }
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2">

@@ -10,5 +10,11 @@ export default defineConfig({
   },
   resolve: {
     conditions: ['node'],
+    // @cf-wasm/resvg est workerd-only : son glue importe 'wbg',
+    // irrésolvable sous Node. Stub déterministe pour les tests
+    // (voir tests/mocks/resvg-workerd.ts).
+    alias: {
+      '@cf-wasm/resvg/workerd': './tests/mocks/resvg-workerd.ts',
+    },
   },
 });

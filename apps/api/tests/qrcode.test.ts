@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createVerifiedUser, makeRequest, createTestEnv, createTestApp } from './setup.js';
 
+// Note : @cf-wasm/resvg est substitué par tests/mocks/resvg-workerd.ts
+// (alias vitest, workerd-only). Sans ça, ce fichier échoue à l'import.
+// Seul le rendu PNG est simulé ; contenu, alias et statuts suivent le vrai code.
+
 const app = createTestApp();
 
 describe('QRCode API', () => {

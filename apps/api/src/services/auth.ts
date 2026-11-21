@@ -64,7 +64,7 @@ export async function createRefreshToken(env: AppEnv['Bindings'], userId: string
   return { token, jti, expiresAt: exp };
 }
 
-export async function createTokenPair(env: AppEnv['Bindings'], userId: string, role: string): Promise<TokenPair> {
+export async function createTokenPair(env: AppEnv['Bindings'], userId: string, role: string): Promise<TokenPair & { accessJti: string; refreshJti: string }> {
   const access = await createAccessToken(env, userId, role);
   const refresh = await createRefreshToken(env, userId);
   return {
@@ -72,6 +72,8 @@ export async function createTokenPair(env: AppEnv['Bindings'], userId: string, r
     refreshToken: refresh.token,
     accessExpiresAt: access.expiresAt,
     refreshExpiresAt: refresh.expiresAt,
+    accessJti: access.jti,
+    refreshJti: refresh.jti,
   };
 }
 
@@ -88,6 +90,14 @@ export async function verifyAccessToken(env: AppEnv['Bindings'], token: string):
     return { userId: String(payload.sub), role: String(payload.role), jti: String(payload.jti) };
   } catch (err) {
     throw new HTTPException(401, { message: 'Invalid or expired access token' });
+  }
+}
+
+export async function parseAccessToken(env: AppEnv['Bindings'], token: string): Promise<{ userId: string; role: string; jti: string } | null> {
+  try {
+    return await verifyAccessToken(env, token);
+  } catch {
+    return null;
   }
 }
 
@@ -135,10 +145,24 @@ export async function authMiddleware(c: AppContext, next: () => Promise<void>) {
   if (!token) {
     throw new HTTPException(401, { message: 'Missing access token' });
   }
-  const { userId, role } = await verifyAccessToken(c.env, token);
+  const { userId, role, jti } = await verifyAccessToken(c.env, token);
   c.set('userId', userId);
   c.set('role', role);
+  c.set('jti', jti);
   await next();
+}
+
+export function extractAccessToken(c: AppContext): string | null {
+  const header = c.req.header('Authorization');
+  const cookie = c.req.header('Cookie');
+  let token: string | null = null;
+  if (header?.startsWith('Bearer ')) {
+    token = header.slice(7).trim();
+  } else if (cookie) {
+    const match = cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
+    if (match) token = match[1];
+  }
+  return token;
 }
 
 export function requireAdmin(c: AppContext, next: () => Promise<void>) {

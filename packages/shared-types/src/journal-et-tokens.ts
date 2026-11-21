@@ -73,8 +73,12 @@ export interface RefreshTokenInternal {
 }
 
 export interface Session {
+  id: number | string;
   tokenHash: string;
-  dateCreation: Date | string;
+  dateCreation?: Date | string;
   userAgent?: string;
-  estRevoke: boolean;
+  estRevoke?: boolean;
+  adresseIP?: string;
+  dateDerniereUtilisation?: Date | string;
+  dateExpiration?: Date | string;
 }
