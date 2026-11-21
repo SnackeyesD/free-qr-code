@@ -4,6 +4,7 @@ import type {
   Fiche,
   FicheModele,
   FicheUpdateInput,
+  NatureFiche,
   SchemaFiche,
   ValeursFiche,
 } from '@free-qr/shared-types';
@@ -14,6 +15,7 @@ import { ficheApi, ficheErrorMessage } from '@/lib/ficheApi';
 import {
   nombreChamps,
   prunerValeurs,
+  schemaCarte,
   schemaVide,
   validerSchemaFiche,
 } from '@/lib/ficheForm';
@@ -110,6 +112,20 @@ export default function FicheEditPage() {
     } catch (err) {
       setError(ficheErrorMessage(err));
     }
+  };
+
+  const changerNature = (nature: NatureFiche) => {
+    setSchema((actuel) => ({ ...actuel, nature }));
+    setSchemaError(null);
+  };
+
+  const appliquerChampsCarte = () => {
+    const carte = schemaCarte();
+    setSchema(carte);
+    setValeurs((precedentes) => prunerValeurs(carte, precedentes));
+    setSchemaError(null);
+    if (!titre.trim()) setTitre('Carte de visite');
+    setNotice('Champs de carte de visite ajoutés. Complétez-les ci-dessous.');
   };
 
   const persist = async (
@@ -384,6 +400,47 @@ export default function FicheEditPage() {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
                 />
               </div>
+
+              <div>
+                <label
+                  htmlFor="fiche-nature"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Présentation
+                </label>
+                <select
+                  id="fiche-nature"
+                  value={schema.nature ?? 'document'}
+                  onChange={(event) =>
+                    changerNature(event.target.value as NatureFiche)
+                  }
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                >
+                  <option value="document">Document</option>
+                  <option value="carte">Carte de visite</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  {schema.nature === 'carte'
+                    ? "La page publique affiche une carte de visite et propose « Ajouter à mes contacts » (fichier vCard)."
+                    : 'La page publique affiche les champs sous forme de document structuré.'}
+                </p>
+              </div>
+
+              {schema.nature === 'carte' && schema.champs.length === 0 && (
+                <div className="rounded-md border border-indigo-100 bg-indigo-50 p-4">
+                  <p className="text-sm text-indigo-900">
+                    Partez des champs standards d'une carte de visite : prénom,
+                    nom, organisation, téléphone, email, site, adresse et note.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={appliquerChampsCarte}
+                    className="mt-3 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                  >
+                    Ajouter les champs de carte de visite
+                  </button>
+                </div>
+              )}
 
               {isNew && modeles.length > 0 && (
                 <div>

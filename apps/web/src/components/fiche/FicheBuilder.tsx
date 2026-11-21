@@ -58,7 +58,7 @@ export function FicheBuilder({ schema, onChange, disabled = false }: FicheBuilde
   const complet = champs.length >= MAX_CHAMPS;
 
   const majChamps = (suivants: ChampFiche[]) => {
-    onChange({ version: 1, champs: suivants });
+    onChange({ ...schema, version: 1, champs: suivants });
   };
 
   const majChamp = (index: number, patch: Partial<ChampFiche>) => {

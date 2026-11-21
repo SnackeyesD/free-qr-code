@@ -67,6 +67,7 @@ export const champFicheSchema = z
 export const schemaFicheSchema: z.ZodType<SchemaFiche> = z
   .object({
     version: z.literal(1),
+    nature: z.enum(["document", "carte"]).optional(),
     champs: z.array(champFicheSchema).min(1).max(30),
   })
   .superRefine((schema, ctx) => {

@@ -91,6 +91,41 @@ export default function FichePubliquePage() {
           )}
         </div>
 
+        {etat === 'pret' && fiche?.schema.nature === 'carte' && (
+          <div className="mb-4 rounded-xl border border-indigo-100 bg-white p-4 shadow-sm print:hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Enregistrer ce contact
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Fichier vCard (.vcf) compatible avec le carnet d’adresses de
+                  votre téléphone.
+                </p>
+              </div>
+              <a
+                href={ficheApi.urlVcfPublique(fiche.publicId)}
+                download
+                className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                >
+                  <path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 15.5h12" />
+                </svg>
+                Ajouter à mes contacts
+              </a>
+            </div>
+          </div>
+        )}
+
         {etat === 'chargement' && (
           <div
             className="flex items-center justify-center rounded-lg bg-white p-12 shadow-sm"
@@ -101,12 +136,25 @@ export default function FichePubliquePage() {
         )}
 
         {etat === 'pret' && fiche && (
-          <FicheRenderer
-            titre={fiche.titre}
-            schema={fiche.schema}
-            valeurs={fiche.valeurs}
-            className="shadow-md print:shadow-none"
-          />
+          <>
+            <FicheRenderer
+              titre={fiche.titre}
+              schema={fiche.schema}
+              valeurs={fiche.valeurs}
+              className="shadow-md print:shadow-none"
+            />
+            {fiche.schema.nature === 'carte' && (
+              <div className="mt-4 text-center print:hidden">
+                <a
+                  href={ficheApi.urlVcfPublique(fiche.publicId)}
+                  download
+                  className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800"
+                >
+                  Ajouter à mes contacts
+                </a>
+              </div>
+            )}
+          </>
         )}
 
         {(etat === 'introuvable' || etat === 'archivee') && (

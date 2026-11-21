@@ -1,8 +1,8 @@
 # Fiches QR — documents structurés et portables
 
 **Date :** 2026-11-12
-**Statut :** ✅ implémenté P0–P2 (hébergé) — 2026-11-13, non encore déployé
-**Périmètre :** nouveau type de contenu « Fiche » (document à champs libres), rendu par le frontend.
+**Statut :** ✅ implémenté P0–P2 et cartes de visite — 2026-11-21, non encore déployé
+**Périmètre :** nouveau type de contenu « Fiche » (document à champs libres ou carte de visite), rendu par le frontend.
 
 ---
 
@@ -44,6 +44,7 @@ travail nécessaire. Le risque pour les QR déjà imprimés est donc nul.
 | Tarification | Gratuit au lancement ; caps anti-abus uniquement (couture Pro plus tard) |
 | Statistiques | Scans comptés par `/q/:alias` ; mode embarqué = aucune statistique, affiché clairement |
 | Rendu | Frontend uniquement ; l'API sert du JSON, jamais du HTML |
+| Cartes de visite | Une fiche `nature: 'carte'` : rendu carte + export vCard `.vcf` fourni par l'API |
 | HTML / Markdown utilisateur | Interdit en v1 (rendu texte strict) |
 | Appels tiers | Aucun (pas de police, carte, analytics ou image externe) |
 
@@ -192,10 +193,27 @@ export interface ChampFiche {
   options?: OptionChampFiche[];
 }
 
+export type NatureFiche = 'document' | 'carte';
+
 export interface SchemaFiche {
   version: 1;
+  /** `carte` active le rendu carte de visite et l'export vCard. */
+  nature?: NatureFiche;
   champs: ChampFiche[]; // 1 à 30 champs
 }
+
+/** Clés conventionnelles reconnues par l'export vCard. */
+export const CLES_CARTE = {
+  prenom: 'prenom',
+  nom: 'nom',
+  organisation: 'organisation',
+  fonction: 'fonction',
+  telephone: 'telephone',
+  email: 'email',
+  site: 'site',
+  adresse: 'adresse',
+  note: 'note',
+} as const;
 
 export type ValeurFiche = string | number | boolean | null;
 export type ValeursFiche = Record<string, ValeurFiche>;
@@ -260,13 +278,18 @@ Règles de validation (Zod, partagées client/serveur) :
 | Méthode | Route | Rôle |
 |---|---|---|
 | `GET` | `/public/fiches/:publicId` | Payload `FichePublique`, sans authentification |
+| `GET` | `/public/fiches/:publicId/vcf` | Téléchargement vCard 3.0 d'une fiche `nature: 'carte'` |
 
-- `200` : fiche active.
-- `404` : identifiant inconnu.
-- `410` : fiche archivée.
+- `200` : fiche active ; `404` : identifiant inconnu ; `410` : fiche archivée.
+- L'export vCard renvoie `404` si la fiche n'est pas une carte de visite.
 - `Cache-Control: no-store`.
 - Rate-limit via le middleware existant.
 - CORS : origine du frontend déjà autorisée par la configuration globale.
+
+La vCard est générée côté serveur à partir des valeurs déjà validées : `N`, `FN`, `ORG`,
+`TITLE`, `TEL`, `EMAIL`, `URL`, `ADR` et `NOTE`. Les clés conventionnelles sont dans
+`CLES_CARTE` ; les champs libres restants sont ajoutés à `NOTE` avec leur libellé.
+Aucun contenu n'est interpolé dans les en-têtes HTTP : le nom de fichier est un slug ASCII.
 
 ### Création du QR associé
 
@@ -332,16 +355,22 @@ et un état « Fiche indisponible » propre pour `404`/`410`.
 
 | Fichier | Rôle |
 |---|---|
-| `components/fiche/FicheRenderer.tsx` | Rendu unique : titre, sections, champs, valeurs |
+| `components/fiche/FicheRenderer.tsx` | Rendu unique : aiguille vers le rendu document ou carte |
+| `components/fiche/FicheCarteRenderer.tsx` | Rendu carte de visite : en-tête, coordonnées, champs complémentaires |
 | `components/fiche/FicheBuilder.tsx` | Édition du schéma (ajout, ordre, type, options) |
 | `components/fiche/FicheValuesForm.tsx` | Saisie des valeurs selon le schéma |
 | `lib/ficheApi.ts` | Appels API (CRUD + public) |
 | `lib/ficheCodec.ts` | Encodage/décodage du payload embarqué (P3) |
 | `pages/FicheEditPage.tsx` | Builder + valeurs + aperçu |
-| `pages/FichePublicPage.tsx` | Chargement et rendu public |
+| `pages/FichePubliquePage.tsx` | Chargement et rendu public, bouton vCard |
 
 ### Rendu
 
+- `schema.nature === 'carte'` : rendu dédié `FicheCarteRenderer` (carte de visite,
+  coordonnées cliquables, champs hors convention sous « Informations complémentaires »).
+  Sinon rendu document classique.
+- La page publique affiche **toutes** les informations avant de proposer, en bas de carte,
+  le bouton volontaire « Ajouter à mes contacts » qui télécharge la vCard.
 - Champs rendus dans l'ordre du schéma ; les `section` deviennent des `<h2>`.
 - Champs facultatifs vides masqués ; champs obligatoires manquants affichés « — »
   (le serveur empêche normalement ce cas).
@@ -492,7 +521,7 @@ Une fois ces points validés (ou ajustés), l'implémentation démarre par **P0*
 - Route publique `GET /public/fiches/:publicId` (`404`/`410`, `Cache-Control: no-store`).
 - `POST /qrcodes { idFiche }` : URL construite côté serveur, `type_contenu = 'url'`,
   QR dynamique, refus si fiche incomplète ou archivée. `PATCH` peut délier (`null`).
-- Tests API : `apps/api/tests/fiches.test.ts` ; suite complète **185 tests verts**.
+- Tests API : `apps/api/tests/fiches.test.ts` ; suite complète **189 tests verts**.
 
 **Livré — P1/P2 (frontend) :**
 
@@ -507,6 +536,22 @@ Une fois ces points validés (ou ajustés), l'implémentation démarre par **P0*
   modèle » depuis l'éditeur. Pas encore de page dédiée `/dashboard/fiches/modeles`.
 - `/d/:publicId` : `noindex, nofollow`, `robots.txt` (`Disallow: /d/`), impression
   navigateur, aucun traceur ni appel tiers.
+
+**Livré — P2.5 (cartes de visite) :**
+
+- `SchemaFiche.nature` (`document` par défaut, `carte` explicite) et constantes
+  `CLES_CARTE` partagées.
+- Éditeur : choix de présentation et bouton « Ajouter les champs de carte de visite »
+  (prénom, nom, organisation, fonction, téléphone, email, site, adresse, note).
+- `FicheCarteRenderer` : rendu carte lisible, liens `tel:`, `mailto:` et URL sûre.
+- Page publique : les informations sont affichées d'abord ; les boutons
+  « Ajouter à mes contacts » téléchargent une vCard 3.0 générée par l'API.
+- `GET /public/fiches/:publicId/vcf` : échappement RFC 6350, pliage à 75 octets,
+  `Content-Disposition` avec slug ASCII, `no-store`, `nosniff`.
+- Les QR vCard existants et le runtime `/q/:alias` restent inchangés.
+- Page marketing `/features` complétée.
+- Collection Insomnia : groupe « Fiches » (CRUD, modèles, fiche publique, export vCard,
+  QR depuis une carte).
 
 **Reste à faire :**
 

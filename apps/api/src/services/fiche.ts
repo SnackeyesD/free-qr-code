@@ -76,7 +76,15 @@ export function parseSchemaFiche(raw: string | null | undefined): SchemaFiche {
   try {
     const parsed = JSON.parse(raw) as SchemaFiche;
     if (!parsed || !Array.isArray(parsed.champs)) return schemaVide();
-    return { version: 1, champs: parsed.champs };
+    const nature =
+      parsed.nature === "carte" || parsed.nature === "document"
+        ? parsed.nature
+        : undefined;
+    return {
+      version: 1,
+      ...(nature ? { nature } : {}),
+      champs: parsed.champs,
+    };
   } catch (err) {
     console.error("Fiche: schéma illisible, rendu vide", err);
     return schemaVide();

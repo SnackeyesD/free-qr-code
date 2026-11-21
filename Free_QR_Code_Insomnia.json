@@ -1,7 +1,7 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-08-01T06:27:46.746Z",
+  "__export_date": "2026-11-21T13:50:46.374Z",
   "__export_source": "insomnia.desktop.app:v2023.5.8",
   "resources": [
     {
@@ -27,7 +27,10 @@
         "campaignId": "",
         "templateId": "",
         "apiKey": "",
-        "apiKeySecret": ""
+        "apiKeySecret": "",
+        "ficheId": "",
+        "ficheCarteId": "",
+        "ficheModeleId": ""
       },
       "dataPropertyOrder": {
         "&": [
@@ -40,7 +43,10 @@
           "campaignId",
           "templateId",
           "apiKey",
-          "apiKeySecret"
+          "apiKeySecret",
+          "ficheId",
+          "ficheCarteId",
+          "ficheModeleId"
         ]
       },
       "color": "#00ff00",
@@ -67,6 +73,13 @@
       "type": "request_group",
       "name": "QR Codes",
       "metaSortKey": 300
+    },
+    {
+      "_id": "fld_fiches000000000001",
+      "parentId": "wrk_9su3hertb3oms9zp22h",
+      "type": "request_group",
+      "name": "Fiches",
+      "metaSortKey": 350
     },
     {
       "_id": "fld_hfa3zf272qfms9zp22h",
@@ -1882,6 +1895,572 @@
       "settingEncodeUrl": true,
       "settingRebuildPath": true,
       "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_list0000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "List Fiches",
+      "url": "{{ base_url }}/fiches",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "page",
+          "value": "1"
+        },
+        {
+          "name": "limit",
+          "value": "20"
+        },
+        {
+          "name": "search",
+          "value": "",
+          "disabled": true
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3501,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_create000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Create Document Fiche",
+      "url": "{{ base_url }}/fiches",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titre\": \"Fiche contact — Gloire SAYI\",\n  \"schema\": {\n    \"version\": 1,\n    \"champs\": [\n      {\n        \"cle\": \"nom\",\n        \"libelle\": \"Nom complet\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"email\",\n        \"libelle\": \"Email\",\n        \"type\": \"email\"\n      },\n      {\n        \"cle\": \"telephone\",\n        \"libelle\": \"Téléphone\",\n        \"type\": \"telephone\"\n      },\n      {\n        \"cle\": \"note\",\n        \"libelle\": \"Note\",\n        \"type\": \"texte_long\"\n      }\n    ]\n  },\n  \"valeurs\": {\n    \"nom\": \"Gloire Messia SAYI\",\n    \"email\": \"gloire@example.com\",\n    \"telephone\": \"+242 06 718 028\",\n    \"note\": \"Fiche de démonstration\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3502,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('ficheId', body.id);\n}"
+    },
+    {
+      "_id": "req_fiches_carte0000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Create Business Card Fiche",
+      "url": "{{ base_url }}/fiches",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titre\": \"Carte de visite — Gloire SAYI\",\n  \"schema\": {\n    \"version\": 1,\n    \"nature\": \"carte\",\n    \"champs\": [\n      {\n        \"cle\": \"prenom\",\n        \"libelle\": \"Prénom\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"nom\",\n        \"libelle\": \"Nom\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"organisation\",\n        \"libelle\": \"Organisation\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"fonction\",\n        \"libelle\": \"Fonction\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"telephone\",\n        \"libelle\": \"Téléphone\",\n        \"type\": \"telephone\"\n      },\n      {\n        \"cle\": \"email\",\n        \"libelle\": \"Email\",\n        \"type\": \"email\"\n      },\n      {\n        \"cle\": \"site\",\n        \"libelle\": \"Site web\",\n        \"type\": \"url\"\n      },\n      {\n        \"cle\": \"adresse\",\n        \"libelle\": \"Adresse\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"note\",\n        \"libelle\": \"Note\",\n        \"type\": \"texte_long\"\n      }\n    ]\n  },\n  \"valeurs\": {\n    \"prenom\": \"Gloire\",\n    \"nom\": \"SAYI\",\n    \"organisation\": \"Free QR Code\",\n    \"fonction\": \"Développeur\",\n    \"telephone\": \"+242 06 718 028\",\n    \"email\": \"gloire@example.com\",\n    \"site\": \"https://example.com\",\n    \"adresse\": \"12 rue de Paris\",\n    \"note\": \"Carte de démonstration\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3503,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('ficheCarteId', body.id);\n}"
+    },
+    {
+      "_id": "req_fiches_get000000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Get Fiche",
+      "url": "{{ base_url }}/fiches/{{ ficheId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3504,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_update000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Update Fiche",
+      "url": "{{ base_url }}/fiches/{{ ficheId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titre\": \"Fiche contact — mise à jour\",\n  \"valeurs\": {\n    \"nom\": \"Gloire Messia SAYI\",\n    \"email\": \"gloire@example.com\",\n    \"telephone\": \"+242 06 718 028\",\n    \"note\": \"Contenu mis à jour\"\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3505,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_archive00001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Archive Fiche",
+      "url": "{{ base_url }}/fiches/{{ ficheId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"estActive\": false\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3506,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_reactive01",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Reactivate Fiche",
+      "url": "{{ base_url }}/fiches/{{ ficheId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"estActive\": true\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3507,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_delete00001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Delete Fiche",
+      "url": "{{ base_url }}/fiches/{{ ficheId }}",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3508,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_modeles_l1",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "List Fiche Models",
+      "url": "{{ base_url }}/fiches/modeles",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3509,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_modeles_c1",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Create Fiche Model",
+      "url": "{{ base_url }}/fiches/modeles",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Carte de visite\",\n  \"description\": \"Champs standards pour une carte de visite avec export vCard.\",\n  \"schema\": {\n    \"version\": 1,\n    \"nature\": \"carte\",\n    \"champs\": [\n      {\n        \"cle\": \"prenom\",\n        \"libelle\": \"Prénom\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"nom\",\n        \"libelle\": \"Nom\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"organisation\",\n        \"libelle\": \"Organisation\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"fonction\",\n        \"libelle\": \"Fonction\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"telephone\",\n        \"libelle\": \"Téléphone\",\n        \"type\": \"telephone\"\n      },\n      {\n        \"cle\": \"email\",\n        \"libelle\": \"Email\",\n        \"type\": \"email\"\n      },\n      {\n        \"cle\": \"site\",\n        \"libelle\": \"Site web\",\n        \"type\": \"url\"\n      },\n      {\n        \"cle\": \"adresse\",\n        \"libelle\": \"Adresse\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"note\",\n        \"libelle\": \"Note\",\n        \"type\": \"texte_long\"\n      }\n    ]\n  },\n  \"estPublic\": false\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3510,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('ficheModeleId', body.id);\n}"
+    },
+    {
+      "_id": "req_fiches_modeles_g1",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Get Fiche Model",
+      "url": "{{ base_url }}/fiches/modeles/{{ ficheModeleId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3511,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_modeles_u1",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Update Fiche Model",
+      "url": "{{ base_url }}/fiches/modeles/{{ ficheModeleId }}",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nom\": \"Carte de visite (modèle)\",\n  \"description\": \"Modèle mis à jour\",\n  \"schema\": {\n    \"version\": 1,\n    \"nature\": \"carte\",\n    \"champs\": [\n      {\n        \"cle\": \"prenom\",\n        \"libelle\": \"Prénom\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"nom\",\n        \"libelle\": \"Nom\",\n        \"type\": \"texte\",\n        \"obligatoire\": true\n      },\n      {\n        \"cle\": \"organisation\",\n        \"libelle\": \"Organisation\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"fonction\",\n        \"libelle\": \"Fonction\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"telephone\",\n        \"libelle\": \"Téléphone\",\n        \"type\": \"telephone\"\n      },\n      {\n        \"cle\": \"email\",\n        \"libelle\": \"Email\",\n        \"type\": \"email\"\n      },\n      {\n        \"cle\": \"site\",\n        \"libelle\": \"Site web\",\n        \"type\": \"url\"\n      },\n      {\n        \"cle\": \"adresse\",\n        \"libelle\": \"Adresse\",\n        \"type\": \"texte\"\n      },\n      {\n        \"cle\": \"note\",\n        \"libelle\": \"Note\",\n        \"type\": \"texte_long\"\n      }\n    ]\n  }\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3512,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_modeles_d1",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Delete Fiche Model",
+      "url": "{{ base_url }}/fiches/modeles/{{ ficheModeleId }}",
+      "method": "DELETE",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3513,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_publique1",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Get Public Fiche",
+      "url": "{{ base_url }}/public/fiches/{{ ficheCarteId }}",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 3514,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_vcf0000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Download Public vCard",
+      "url": "{{ base_url }}/public/fiches/{{ ficheCarteId }}/vcf",
+      "method": "GET",
+      "body": {},
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "text/vcard"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "none"
+      },
+      "metaSortKey": 3515,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_fiches_qr000000001",
+      "parentId": "fld_fiches000000000001",
+      "type": "request",
+      "name": "Create QR from Card Fiche",
+      "url": "{{ base_url }}/qrcodes",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"dynamique\",\n  \"idFiche\": \"{{ ficheCarteId }}\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ accessToken }}",
+        "prefix": "Bearer"
+      },
+      "metaSortKey": 3516,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "afterResponseScript": "const body = insomnia.response.json();\nif (body.id) {\n  insomnia.environment.set('qrId', body.id);\n}\nif (body.aliasCourt) {\n  insomnia.environment.set('aliasCourt', body.aliasCourt);\n}"
     }
   ]
 }

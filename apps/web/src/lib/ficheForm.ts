@@ -1,9 +1,37 @@
-import type { SchemaFiche, ValeursFiche } from '@free-qr/shared-types';
+import type {
+  ChampFiche,
+  SchemaFiche,
+  ValeursFiche,
+} from '@free-qr/shared-types';
 
 export const MAX_CHAMPS_FICHE = 30;
 
 export function schemaVide(): SchemaFiche {
   return { version: 1, champs: [] };
+}
+
+/**
+ * Champs proposés pour une carte de visite. Les clés correspondent aux
+ * conventions reconnues par l'export vCard côté API.
+ */
+export const CHAMPS_CARTE: readonly ChampFiche[] = [
+  { cle: 'prenom', libelle: 'Prénom', type: 'texte', obligatoire: true },
+  { cle: 'nom', libelle: 'Nom', type: 'texte', obligatoire: true },
+  { cle: 'organisation', libelle: 'Organisation', type: 'texte' },
+  { cle: 'fonction', libelle: 'Fonction', type: 'texte' },
+  { cle: 'telephone', libelle: 'Téléphone', type: 'telephone' },
+  { cle: 'email', libelle: 'Email', type: 'email' },
+  { cle: 'site', libelle: 'Site web', type: 'url' },
+  { cle: 'adresse', libelle: 'Adresse', type: 'texte' },
+  { cle: 'note', libelle: 'Note', type: 'texte_long' },
+];
+
+export function schemaCarte(): SchemaFiche {
+  return {
+    version: 1,
+    nature: 'carte',
+    champs: CHAMPS_CARTE.map((champ) => ({ ...champ })),
+  };
 }
 
 export function nombreChamps(schema: SchemaFiche): number {

@@ -35,9 +35,36 @@ export interface ChampFiche {
   options?: OptionChampFiche[];
 }
 
+/** Présentation d'une fiche. Absent = document générique. */
+export type NatureFiche = 'document' | 'carte';
+
+/**
+ * Clés conventionnelles d'une fiche de nature « carte ».
+ *
+ * Le builder propose ces clés par défaut ; l'export vCard les reconnaît pour
+ * produire des propriétés normalisées (N, ORG, TEL, EMAIL, URL, ADR, NOTE).
+ * Une fiche reste libre : les champs hors convention sont rendus sur la page
+ * et ajoutés à la note de la vCard.
+ */
+export const CLES_CARTE = {
+  prenom: 'prenom',
+  nom: 'nom',
+  organisation: 'organisation',
+  fonction: 'fonction',
+  telephone: 'telephone',
+  email: 'email',
+  site: 'site',
+  adresse: 'adresse',
+  note: 'note',
+} as const;
+
+export type CleCarte = (typeof CLES_CARTE)[keyof typeof CLES_CARTE];
+
 export interface SchemaFiche {
   /** Version du format de schéma. */
   version: 1;
+  /** `carte` active le rendu carte de visite et l'export vCard. */
+  nature?: NatureFiche;
   champs: ChampFiche[];
 }
 

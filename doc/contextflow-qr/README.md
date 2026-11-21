@@ -14,7 +14,7 @@ Routage contextuel des QR dynamiques : un seul QR imprimé, plusieurs destinatio
 | 05 | [`05_PHASE_4_APPAREIL_CONSENTEMENT.md`](./05_PHASE_4_APPAREIL_CONSENTEMENT.md) | Cookie `cfq_did`, bandeau, compteur par appareil | ~3–4 j | ✅ |
 | 06 | [`06_PHASE_5_MONETISATION.md`](./06_PHASE_5_MONETISATION.md) | `plan`, flag Pro, quotas, métriques d'adoption | ~2 j | ✅ |
 | 07 | [`07_CORRECTIF_CONTENU_DYNAMIQUE.md`](./07_CORRECTIF_CONTENU_DYNAMIQUE.md) | Correctif `Invalid header value` : vCard servie en `.vcf`, contenu dynamique non limité aux URL | — | ✅ déployé |
-| 08 | [`08_FICHES_DOCUMENTS.md`](./08_FICHES_DOCUMENTS.md) | Fiches : modèles de champs libres, document rendu par le frontend, mode hébergé puis portable | ~9–13 j | ✅ P0–P2 implémenté |
+| 08 | [`08_FICHES_DOCUMENTS.md`](./08_FICHES_DOCUMENTS.md) | Fiches : modèles de champs libres, document ou carte de visite rendu par le frontend, mode hébergé puis portable | ~9–13 j | ✅ P0–P2 + cartes de visite implémentés |
 
 ## Ordre d'exécution
 

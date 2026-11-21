@@ -4,6 +4,7 @@ import type {
   ValeurFiche,
   ValeursFiche,
 } from '@free-qr/shared-types';
+import { FicheCarteRenderer } from './FicheCarteRenderer';
 
 interface FicheRendererProps {
   titre: string;
@@ -147,6 +148,17 @@ export function FicheRenderer({
   valeurs,
   className = '',
 }: FicheRendererProps) {
+  if (schema.nature === 'carte') {
+    return (
+      <FicheCarteRenderer
+        titre={titre}
+        schema={schema}
+        valeurs={valeurs}
+        className={className}
+      />
+    );
+  }
+
   const groupes = regrouperChamps(schema);
 
   return (

@@ -25,6 +25,46 @@ const schema = {
   ],
 };
 
+const schemaCarte = {
+  version: 1 as const,
+  nature: "carte" as const,
+  champs: [
+    {
+      cle: "prenom",
+      libelle: "Prénom",
+      type: "texte" as const,
+      obligatoire: true,
+    },
+    {
+      cle: "nom",
+      libelle: "Nom",
+      type: "texte" as const,
+      obligatoire: true,
+    },
+    { cle: "organisation", libelle: "Organisation", type: "texte" as const },
+    { cle: "fonction", libelle: "Fonction", type: "texte" as const },
+    { cle: "telephone", libelle: "Téléphone", type: "telephone" as const },
+    { cle: "email", libelle: "Email", type: "email" as const },
+    { cle: "site", libelle: "Site web", type: "url" as const },
+    { cle: "adresse", libelle: "Adresse", type: "texte" as const },
+    { cle: "note", libelle: "Note", type: "texte_long" as const },
+    { cle: "anniversaire", libelle: "Anniversaire", type: "date" as const },
+  ],
+};
+
+const valeursCarte = {
+  prenom: "Gloire",
+  nom: "SAYI",
+  organisation: "Free QR Code",
+  fonction: "Développeur",
+  telephone: "+242 06 718 028",
+  email: "gloire@example.com",
+  site: "https://example.com",
+  adresse: "12 rue de Paris",
+  note: "Note initiale",
+  anniversaire: "1990-01-01",
+};
+
 describe("Fiches API", () => {
   let ctx: ReturnType<typeof createTestEnv>;
 
@@ -441,5 +481,124 @@ describe("Fiches API", () => {
       headers: auth(token),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("conserve la nature carte et expose les valeurs publiquement", async () => {
+    const token = await loginUser("fiche-carte1@example.com");
+    const res = await makeRequest(app, ctx.env, "POST", "/fiches", {
+      body: {
+        titre: "Carte de visite — Gloire SAYI",
+        schema: schemaCarte,
+        valeurs: valeursCarte,
+      },
+      headers: auth(token),
+    });
+
+    expect(res.status).toBe(201);
+    const fiche = (await res.json()) as {
+      id: string;
+      schema: typeof schemaCarte;
+    };
+    expect(fiche.schema.nature).toBe("carte");
+
+    const publique = await makeRequest(
+      app,
+      ctx.env,
+      "GET",
+      `/public/fiches/${fiche.id}`,
+    );
+    expect(publique.status).toBe(200);
+    const body = (await publique.json()) as {
+      schema: typeof schemaCarte;
+      valeurs: Record<string, unknown>;
+    };
+    expect(body.schema.nature).toBe("carte");
+    expect(body.valeurs.prenom).toBe("Gloire");
+  });
+
+  it("génère une vCard 3.0 complète pour une fiche carte", async () => {
+    const token = await loginUser("fiche-carte2@example.com");
+    const creation = await makeRequest(app, ctx.env, "POST", "/fiches", {
+      body: {
+        titre: "Carte de visite — Gloire SAYI",
+        schema: schemaCarte,
+        valeurs: valeursCarte,
+      },
+      headers: auth(token),
+    });
+    const fiche = (await creation.json()) as { id: string };
+
+    const res = await makeRequest(
+      app,
+      ctx.env,
+      "GET",
+      `/public/fiches/${fiche.id}/vcf`,
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/vcard");
+    expect(res.headers.get("content-disposition")).toContain(
+      'filename="gloire-sayi.vcf"',
+    );
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+
+    const texte = await res.text();
+    expect(texte).toContain("BEGIN:VCARD\r\nVERSION:3.0");
+    expect(texte).toContain("N:SAYI;Gloire;;;");
+    expect(texte).toContain("FN:Gloire SAYI");
+    expect(texte).toContain("ORG:Free QR Code");
+    expect(texte).toContain("TITLE:Développeur");
+    expect(texte).toContain("TEL;TYPE=CELL:+242 06 718 028");
+    expect(texte).toContain("EMAIL;TYPE=INTERNET:gloire@example.com");
+    expect(texte).toContain("URL:https://example.com");
+    expect(texte).toContain("ADR;TYPE=WORK:;;12 rue de Paris;;;;");
+    expect(texte).toContain("Note initiale");
+    expect(texte).toContain("Anniversaire : 1990-01-01");
+    expect(texte).toContain("\r\nEND:VCARD\r\n");
+  });
+
+  it("échappe les caractères réservés dans la vCard", async () => {
+    const token = await loginUser("fiche-carte3@example.com");
+    const creation = await makeRequest(app, ctx.env, "POST", "/fiches", {
+      body: {
+        titre: "Carte à échapper",
+        schema: schemaCarte,
+        valeurs: {
+          prenom: "Jean",
+          nom: "Dupont; Jr",
+          note: "Ligne 1; test, ok\nLigne 2 \\ fin",
+        },
+      },
+      headers: auth(token),
+    });
+    const fiche = (await creation.json()) as { id: string };
+
+    const res = await makeRequest(
+      app,
+      ctx.env,
+      "GET",
+      `/public/fiches/${fiche.id}/vcf`,
+    );
+
+    expect(res.status).toBe(200);
+    const texte = await res.text();
+    expect(texte).toContain("N:Dupont\\; Jr;Jean;;;");
+    expect(texte).toContain(
+      "NOTE:Ligne 1\\; test\\, ok\\nLigne 2 \\\\ fin",
+    );
+  });
+
+  it("refuse l'export vCard d'une fiche qui n'est pas une carte", async () => {
+    const token = await loginUser("fiche-carte4@example.com");
+    const fiche = await creerFicheComplete(token);
+
+    const res = await makeRequest(
+      app,
+      ctx.env,
+      "GET",
+      `/public/fiches/${fiche.id}/vcf`,
+    );
+    expect(res.status).toBe(404);
   });
 });

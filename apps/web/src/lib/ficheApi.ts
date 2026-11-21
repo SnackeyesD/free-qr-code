@@ -80,6 +80,14 @@ export const ficheApi = {
     );
     return data;
   },
+
+  /** URL directe de téléchargement de la vCard d'une fiche « carte ». */
+  urlVcfPublique: (publicId: string): string => {
+    const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787')
+      .trim()
+      .replace(/\/$/, '');
+    return `${base}/public/fiches/${encodeURIComponent(publicId)}/vcf`;
+  },
 };
 
 /** Message lisible à partir du format d'erreur de l'API. */
